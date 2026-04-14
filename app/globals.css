@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #fbfdff 0%, #f7fafc 100%);
+  color: #0f172a;
+  font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+}
+
+.section-title {
+  @apply text-2xl font-semibold leading-tight text-slate-900 md:text-3xl;
+}
+
+.section-desc {
+  @apply mt-4 text-base leading-7 text-slate-600 md:text-lg;
+}
