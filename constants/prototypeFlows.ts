@@ -1,4 +1,4 @@
-export type FlowSlug = "flow-a" | "flow-b" | "flow-c";
+export type FlowSlug = "flow-a" | "flow-b";
 
 export type FlowOption = {
   label: string;
@@ -41,11 +41,11 @@ export type PrototypeFlow = {
 };
 
 export const PROTOTYPE_HUB = {
-  badge: "내부 프로토타입 샌드박스",
-  title: "3가지 UX 설득 구조 비교",
+  badge: "Interactive Prototypes",
+  title: "두 가지 진단 흐름",
   description:
-    "동일한 ESG 마케팅 툴 컨셉을 세 가지 논리 구조로 비교합니다. 핵심은 화면 스타일이 아니라, 가치 제안의 순서와 설득 방식입니다.",
-  note: "A/B는 ROI 중심, C는 문제 이해 중심으로 설계했습니다."
+    "같은 제품 컨셉을 서로 다른 인터랙션 방식으로 체험할 수 있도록 구성했습니다.",
+  note: "A는 마이크로 진단, B는 인터랙티브 ROI 도구입니다."
 };
 
 export const PROTOTYPE_FLOWS: PrototypeFlow[] = [
@@ -226,110 +226,10 @@ export const PROTOTYPE_FLOWS: PrototypeFlow[] = [
         nextAction: "분기 단위 성과지표를 설정하고 확장 로드맵을 즉시 착수합니다."
       }
     ]
-  },
-  {
-    slug: "flow-c",
-    route: "/flow-c",
-    shortLabel: "플로우 C",
-    title: "문제 이해 중심 진단",
-    subtitle: "문제 맥락 진단 후 전략 대안을 제시",
-    tone: "전략적 · 컨설팅형",
-    strategicFocus: "문제 정의 기반 신뢰 확보",
-    summary:
-      "ROI를 앞세우기보다 현장의 문제를 구조적으로 이해하고, 우선순위에 맞는 해결 경로를 제안하는 진단형 흐름입니다.",
-    tags: ["문제 이해 우선", "전략적 진단", "신뢰 중심 전환"],
-    steps: [
-      {
-        id: "company-context",
-        title: "회사 기본 상황",
-        description: "현재 ESG 대응의 추진 배경에 가까운 항목을 선택해 주세요.",
-        options: [
-          { label: "고객/시장 요구 대응 압력이 빠르게 증가", score: 3 },
-          { label: "규제 대응 리스크를 선제적으로 관리 필요", score: 4 },
-          { label: "내부 운영 효율화 필요성이 확대", score: 2 }
-        ]
-      },
-      {
-        id: "problem-category",
-        title: "핵심 문제 카테고리",
-        description: "현재 가장 해결이 시급한 ESG 운영 문제를 선택해 주세요.",
-        options: [
-          { label: "탄소 데이터 수집·관리", score: 4 },
-          { label: "공시/보고 준비 및 규제 대응", score: 4 },
-          { label: "공급망 대응 또는 제품 탄소/LCA", score: 3 }
-        ]
-      },
-      {
-        id: "sub-problem",
-        title: "세부 난점",
-        description: "문제 해결을 막는 가장 큰 난점을 선택해 주세요.",
-        options: [
-          { label: "데이터 정합성 확보가 어렵고 반복 검증 부담이 큼", score: 4 },
-          { label: "부서 간 역할/책임 경계가 불명확", score: 3 },
-          { label: "도입 우선순위 합의가 지연됨", score: 2 }
-        ]
-      },
-      {
-        id: "priority",
-        title: "의사결정 우선순위",
-        description: "현재 경영진이 가장 중요하게 보는 우선순위를 선택해 주세요.",
-        options: [
-          { label: "신뢰 가능한 대응 체계 구축", score: 4 },
-          { label: "운영 리소스 절감과 실행 속도", score: 3 },
-          { label: "비용 통제 및 단계적 투자", score: 2 }
-        ]
-      },
-      {
-        id: "execution",
-        title: "실행 선호 방식",
-        description: "현실적으로 적합한 실행 스타일을 선택해 주세요.",
-        options: [
-          { label: "초기 컨설팅 후 플랫폼 전환", score: 4 },
-          { label: "플랫폼 우선 도입 후 필요 시 컨설팅 보완", score: 3 },
-          { label: "단기 과제 중심으로 점진 적용", score: 2 }
-        ]
-      }
-    ],
-    captureMessage: "진단 리포트와 권고 시나리오 전달 단계에서 연락처를 요청하는 구조",
-    ctaPrimary: "전략 진단 미팅 요청",
-    ctaSecondary: "권고안 공유 받기",
-    resultBands: [
-      {
-        min: 0,
-        max: 9,
-        headline: "문제 정의 재정렬이 우선입니다",
-        recommendation: "현재 상황에서는 컨설팅 우선 접근이 적합합니다.",
-        rationale: "핵심 과제와 우선순위 정렬이 먼저 확정되어야 이후 도입 효율을 높일 수 있습니다.",
-        operationalBenefit: "의사결정 혼선 감소, 프로젝트 실패 위험 완화",
-        projectDirection: "컨설팅 중심 진단 단계",
-        nextAction: "핵심 이해관계자 인터뷰를 통해 문제 정의 문서를 먼저 확정합니다."
-      },
-      {
-        min: 10,
-        max: 14,
-        headline: "하이브리드 경로가 가장 현실적입니다",
-        recommendation: "초기 컨설팅 후 플랫폼 전환이 가장 효율적입니다.",
-        rationale: "문제 복잡도와 실행 필요성이 동시에 존재해 단계적 하이브리드 접근이 안정적입니다.",
-        operationalBenefit: "전략 신뢰도 확보와 운영 효율 개선 동시 추진",
-        projectDirection: "컨설팅 + 플랫폼 병행",
-        nextAction: "우선 해결 영역 1개를 선정해 진단-적용 결합형 파일럿을 설계합니다."
-      },
-      {
-        min: 15,
-        max: 25,
-        headline: "플랫폼 중심 실행으로 빠른 성과가 가능합니다",
-        recommendation: "현재 상황에서는 플랫폼 우선 접근이 적합합니다.",
-        rationale: "핵심 문제와 실행 우선순위가 이미 구체적이어서 즉시 적용형 전략이 유효합니다.",
-        operationalBenefit: "데이터 운영 안정화, 대응 리드타임 단축",
-        projectDirection: "플랫폼 중심 실행 전략",
-        nextAction: "90일 실행 로드맵으로 데이터·보고·협업 프로세스를 동시 전환합니다."
-      }
-    ]
   }
 ];
 
 export const FLOW_BY_SLUG: Record<FlowSlug, PrototypeFlow> = {
   "flow-a": PROTOTYPE_FLOWS[0],
-  "flow-b": PROTOTYPE_FLOWS[1],
-  "flow-c": PROTOTYPE_FLOWS[2]
+  "flow-b": PROTOTYPE_FLOWS[1]
 };
