@@ -2,6 +2,7 @@ import ConceptSection from "@/components/ConceptSection";
 import CtaSection from "@/components/CtaSection";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
+import MarketingCasesSection from "@/components/MarketingCasesSection";
 import Navbar from "@/components/Navbar";
 import ProblemSection from "@/components/ProblemSection";
 import ValueSection from "@/components/ValueSection";
@@ -16,6 +17,7 @@ export default function HomePage() {
       <VisionSection />
       <ConceptSection />
       <ValueSection />
+      <MarketingCasesSection />
       <CtaSection />
       <Footer />
     </main>
