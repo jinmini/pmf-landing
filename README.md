@@ -36,5 +36,13 @@ npm run start
 ## 주요 편집 포인트
 
 - 카피/문구 수정: `constants/content.ts`
+- 프로토타입 플로우 정의: `constants/prototypeFlows.ts`
 - 섹션 조합 순서 변경: `app/page.tsx`
 - 섹션별 레이아웃/스타일 수정: `components/*Section.tsx`
+
+## 프로토타입 플로우 접근 경로
+
+- 허브(메인): `/`
+- 플로우 A: `/flow-a`
+- 플로우 B: `/flow-b`
+- 플로우 C: `/flow-c`

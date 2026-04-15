@@ -1,6 +1,7 @@
 export const NAV = {
   brand: "LynC",
   links: [
+    { label: "플로우 비교", href: "#prototype-hub" },
     { label: "문제 인식", href: "#problem" },
     { label: "비전", href: "#vision" },
     { label: "플랫폼 컨셉", href: "#concept" },
@@ -14,8 +15,8 @@ export const HERO = {
   title: "지속가능성 대응의 불확실성을, 전략적 학습 기회로 전환합니다",
   description:
     "LynC는 ESG 및 LCA 대응 과정에서 실제 고객이 어떤 지점에서 어려움을 겪는지 더 명확히 이해하기 위한 방향성을 제시합니다. 이 페이지는 내부 검토를 위한 초기 컨셉입니다.",
-  primaryCta: "컨셉 리뷰 요청",
-  secondaryCta: "내부 논의 시작"
+  primaryCta: "3개 플로우 비교 시작",
+  secondaryCta: "전략 방향 검토"
 };
 
 export const PROBLEM = {

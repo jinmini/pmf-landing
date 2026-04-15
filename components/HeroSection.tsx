@@ -16,7 +16,7 @@ export default function HeroSection() {
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <a
-            href="#cta"
+            href="#prototype-hub"
             className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
           >
             {HERO.primaryCta}
