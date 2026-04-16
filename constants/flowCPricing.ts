@@ -6,7 +6,7 @@
   "target-management": "Target_Management",
   sbti: "SBTi",
   cdp: "CDP",
-  "lync-platform": "LynC"
+  "lca-platform": "LynC"
 } as const;
 
 export const FLOW_C_COMPANY_SIZE_KEY_BY_ID = {
@@ -99,6 +99,6 @@ export const FLOW_C_LYNC_ONBOARDING_TABLE = {
 
 export const FLOW_C_SHORT_MESSAGES = {
   base: "현재 선택 조건을 기준으로 산출한 예상 범위입니다.",
-  variance: "실제 제안 범위는 대상 제품, 데이터 구조, 운영 방식에 따라 달라질 수 있습니다.",
-  onboarding: "LynC 선택 시 온보딩 범위가 함께 검토됩니다."
+  variance: "실제 도입금액 범위는 대상 제품, 데이터 구조, 운영 방식에 따라 달라질 수 있습니다.",
+  onboarding: "LCA SW 선택 시 온보딩 컨설팅 범위가 함께 검토됩니다."
 } as const;

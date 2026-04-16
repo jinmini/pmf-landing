@@ -139,8 +139,8 @@ const SERVICE_OPTIONS: ServiceOption[] = [
     description: "공시 대응과 대외 신뢰 확보를 위한 구조화"
   },
   {
-    id: "lync-platform",
-    title: "LynC(LCA Platform)",
+    id: "lca-platform",
+    title: "LCA SW(전과정평가 시스템)",
     category: "Platform",
     description: "반복 운영을 위한 플랫폼 세팅과 온보딩 범위"
   }
@@ -211,6 +211,39 @@ function formatAmount(amount: number) {
 
 function formatRange(range: PricingRange) {
   return `${formatAmount(range.min)} ~ ${formatAmount(range.max)}`;
+}
+
+function useCountUp(target: number, isActive: boolean, duration = 1600) {
+  const [value, setValue] = useState(isActive ? 0 : target);
+
+  useEffect(() => {
+    if (!isActive) {
+      setValue(target);
+      return;
+    }
+
+    let frameId = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      setValue(Math.round(target * eased));
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    setValue(0);
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [duration, isActive, target]);
+
+  return value;
 }
 
 function roundRange(range: PricingRange): PricingRange {
@@ -315,21 +348,33 @@ function StepDropdown({
 export default function FlowCExperience() {
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [displayStepIndex, setDisplayStepIndex] = useState(0);
+  const [stepTransitionPhase, setStepTransitionPhase] = useState<"idle" | "exit" | "enter">("idle");
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryOption["id"] | "">("");
   const [selectedScale, setSelectedScale] = useState<ScaleOption["id"] | "">("");
   const [selectedCurrent, setSelectedCurrent] = useState<CurrentStateOption["id"] | "">("");
   const [selectedServices, setSelectedServices] = useState<ServiceOption["id"][]>([]);
   const [selectedGoal, setSelectedGoal] = useState<GoalOption["id"] | "">("");
   const [openDropdown, setOpenDropdown] = useState<"industry" | "scale" | null>(null);
+  const [resultAnimated, setResultAnimated] = useState(false);
   const companyStepRef = useRef<HTMLDivElement | null>(null);
+  const stepExitTimerRef = useRef<number | null>(null);
+  const stepEnterTimerRef = useRef<number | null>(null);
 
-  const currentStep = STEPS[stepIndex];
+  const currentStep = STEPS[displayStepIndex];
   const isComplete = stepIndex >= STEPS.length;
-  const progress = Math.round((Math.min(stepIndex, STEPS.length) / STEPS.length) * 100);
+  const progress = Math.round((Math.min(displayStepIndex, STEPS.length) / STEPS.length) * 100);
+  const isStepTransitioning = stepTransitionPhase !== "idle";
+  const stepTransitionClass =
+    stepTransitionPhase === "exit"
+      ? "translate-y-4 opacity-0"
+      : stepTransitionPhase === "enter"
+        ? "-translate-y-4 opacity-0"
+        : "translate-y-0 opacity-100";
 
   useEffect(() => {
     setOpenDropdown(null);
-  }, [stepIndex]);
+  }, [displayStepIndex]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -340,6 +385,17 @@ export default function FlowCExperience() {
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (stepExitTimerRef.current !== null) {
+        window.clearTimeout(stepExitTimerRef.current);
+      }
+      if (stepEnterTimerRef.current !== null) {
+        window.clearTimeout(stepEnterTimerRef.current);
+      }
+    };
   }, []);
 
   const isStepValid =
@@ -369,7 +425,7 @@ export default function FlowCExperience() {
       };
     });
 
-    const hasPlatform = selectedServices.includes("lync-platform");
+    const hasPlatform = selectedServices.includes("lca-platform");
     const solutionRange = mergeRanges(serviceRanges.map((service) => service.range));
     const onboardingRange = hasPlatform ? buildFixedRange(FLOW_C_LYNC_ONBOARDING_TABLE[companyKey]) : null;
     const total = onboardingRange ? mergeRanges([solutionRange, onboardingRange]) : solutionRange;
@@ -402,25 +458,87 @@ export default function FlowCExperience() {
       },
       recommendation,
       shortMessages,
-      serviceLabels: serviceRanges.map((service) => service.label)
+      serviceLabels: serviceRanges.map((service) => service.label),
+      serviceBreakdown: serviceRanges.map((service) => ({
+        id: service.serviceId,
+        label: service.label,
+        range: service.range
+      }))
     };
   }, [selectedCurrent, selectedGoal, selectedIndustry, selectedScale, selectedServices]);
 
-  const handleNext = () => {
-    if (!isStepValid) {
+  useEffect(() => {
+    const shouldAnimate = isComplete && Boolean(estimate);
+    setResultAnimated(shouldAnimate);
+
+    if (!shouldAnimate) {
       return;
     }
 
-    setStepIndex((prev) => prev + 1);
+    const timeoutId = window.setTimeout(() => setResultAnimated(false), 340);
+    return () => window.clearTimeout(timeoutId);
+  }, [estimate, isComplete]);
+
+  const animatedMin = useCountUp(estimate?.total.min ?? 0, resultAnimated);
+  const animatedMax = useCountUp(estimate?.total.max ?? 0, resultAnimated, 1750);
+
+  const transitionToStep = (nextIndex: number) => {
+    if (isStepTransitioning) {
+      return;
+    }
+
+    if (stepExitTimerRef.current !== null) {
+      window.clearTimeout(stepExitTimerRef.current);
+    }
+    if (stepEnterTimerRef.current !== null) {
+      window.clearTimeout(stepEnterTimerRef.current);
+    }
+
+    setStepTransitionPhase("exit");
+    stepExitTimerRef.current = window.setTimeout(() => {
+      if (nextIndex >= STEPS.length) {
+        setStepIndex(nextIndex);
+        setStepTransitionPhase("idle");
+        return;
+      }
+
+      setStepIndex(nextIndex);
+      setDisplayStepIndex(nextIndex);
+      setStepTransitionPhase("enter");
+
+      stepEnterTimerRef.current = window.setTimeout(() => {
+        setStepTransitionPhase("idle");
+      }, 190);
+    }, 180);
+  };
+
+  const handleNext = () => {
+    if (!isStepValid || isStepTransitioning) {
+      return;
+    }
+
+    transitionToStep(displayStepIndex + 1);
   };
 
   const handlePrev = () => {
-    setStepIndex((prev) => Math.max(0, prev - 1));
+    if (displayStepIndex === 0 || isStepTransitioning) {
+      return;
+    }
+
+    transitionToStep(Math.max(0, displayStepIndex - 1));
   };
 
   const handleRestart = () => {
+    if (stepExitTimerRef.current !== null) {
+      window.clearTimeout(stepExitTimerRef.current);
+    }
+    if (stepEnterTimerRef.current !== null) {
+      window.clearTimeout(stepEnterTimerRef.current);
+    }
     setStarted(false);
     setStepIndex(0);
+    setDisplayStepIndex(0);
+    setStepTransitionPhase("idle");
     setSelectedIndustry("");
     setSelectedScale("");
     setSelectedCurrent("");
@@ -436,25 +554,23 @@ export default function FlowCExperience() {
 
   if (!started) {
     return (
-      <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
-        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col items-center justify-between">
-          <div className="w-full text-center">
-            <div className="rounded-[2.25rem] border border-slate-200 bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf4ff_36%,#ffffff_76%)] px-6 py-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-              <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 탄소중립 예산 가이드</p>
-              <h1 className="mt-4 text-[1.5rem] font-semibold tracking-tight text-slate-950">
-                우리 회사
+      <main className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,#eef4ff_0%,#f8fbff_38%,#ffffff_78%)] px-5 py-8 sm:px-6">
+        <div className="mx-auto flex max-w-md flex-col gap-7">
+          <div>
+            <div className="rounded-[2rem] border border-white/60 bg-white/70 px-6 py-7 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur">
+              <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 규제 비용 진단</p>
+              <h1 className="mt-4 text-[2.06rem] font-[800] leading-[1.24] tracking-[-0.02em] text-slate-950 sm:text-[2.2rem]">
+                탄소 규제 대응 비용,
                 <br />
-                탄소중립 예산 한 번에 알아보기
-                <span className="text-brand-700"></span>
+                1분 만에 확인해보세요
               </h1>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
-                업종, 규모, 현재 대응 수준, 검토 범위를 차례대로 선택하면
-                <br />
-                예상 제안 범위와 검토 방향을 빠르게 확인할 수 있습니다.
-              </p>
             </div>
 
-            <div className="mt-10 rounded-[2rem] bg-[radial-gradient(circle_at_top,#eff6ff_0%,#dbeafe_38%,#ffffff_76%)] px-6 py-10 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+            <div className="mt-8 rounded-[2rem] bg-[radial-gradient(circle_at_top,#eff6ff_0%,#dbeafe_38%,#ffffff_76%)] px-6 py-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-semibold text-[#3268e6]">결과까지 약 1분</span>
+                <span className="text-xs font-semibold tracking-[0.1em] text-slate-400">4 STEP</span>
+              </div>
               <div className="grid gap-3 text-left">
                 <div className="rounded-[1.3rem] bg-white/80 px-4 py-4 shadow-sm">
                   <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">STEP 1</p>
@@ -480,9 +596,9 @@ export default function FlowCExperience() {
             <button
               type="button"
               onClick={() => setStarted(true)}
-              className="w-full rounded-[1.4rem] bg-[#132750] px-5 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)] transition-transform hover:-translate-y-0.5"
+              className="w-full rounded-[1.25rem] bg-[linear-gradient(135deg,#2f6de9_0%,#1f5edc_45%,#1a4fbe_100%)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_40px_rgba(47,109,233,0.34)] transition-transform hover:-translate-y-0.5"
             >
-              예상 범위 확인하기
+              진단 시작하기
             </button>
           </div>
         </div>
@@ -491,33 +607,50 @@ export default function FlowCExperience() {
   }
 
   if (isComplete && estimate) {
+    const shouldShowBreakdown = estimate.serviceBreakdown.length > 1;
+
     return (
       <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-          <div className="bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_45%,#f8fafc_100%)] px-6 pb-8 pt-6">
-            <p className="mt-8 text-sm font-semibold text-slate-600">예상 제안 범위</p>
-            <h1 className="mt-2 text-[2.15rem] font-semibold tracking-tight text-slate-950">
-              {formatRange(estimate.total)}
-            </h1>
+          <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#f8fafc_100%)] px-6 pb-8 pt-6">
+            <p className="mt-8 text-sm font-semibold text-slate-500">예상 도입 금액 범위</p>
+            <div className="mt-4 px-1">
+              <p
+                className={`inline-flex items-end gap-2 whitespace-nowrap text-[clamp(1.18rem,6.9vw,1.95rem)] font-[800] leading-none tracking-[-0.04em] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
+              >
+                <span>{formatAmount(animatedMin)}</span>
+                <span className="pb-[0.08rem] text-[0.95em] font-semibold text-slate-300">~</span>
+                <span>{formatAmount(animatedMax)}</span>
+              </p>
+            </div>
             <p className="mt-3 text-base leading-7 text-slate-700">{estimate.recommendation}</p>
           </div>
 
           <div className="px-6 py-7">
-            <div className="rounded-[1.5rem] bg-slate-50 px-5 py-4">
-              <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
-              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                <div className="flex items-center justify-between gap-3">
-                  <span>선택 솔루션 범위</span>
-                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.solution)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>LynC 온보딩</span>
-                  <span className="font-semibold text-slate-900">
-                    {estimate.breakdown.onboarding ? formatRange(estimate.breakdown.onboarding) : "미포함"}
-                  </span>
+            {shouldShowBreakdown ? (
+              <div className="rounded-[1.5rem] bg-slate-50 px-5 py-4">
+                <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+                  {estimate.serviceBreakdown.map((service) => (
+                    <div key={service.id} className="flex items-center justify-between gap-3">
+                      <span>{service.label}</span>
+                      <span className="font-semibold text-slate-900">{formatRange(service.range)}</span>
+                    </div>
+                  ))}
+                  {estimate.breakdown.onboarding ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span>LCA SW 온보딩 컨설팅</span>
+                      <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.onboarding)}</span>
+                    </div>
+                  ) : null}
+                  <div className="mt-2 h-px bg-slate-200" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span>합계 범위</span>
+                    <span className="font-semibold text-slate-900">{formatRange(estimate.total)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="mt-6 rounded-[1.4rem] border border-slate-200 px-4 py-4">
               <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">산정 기준</p>
@@ -567,154 +700,155 @@ export default function FlowCExperience() {
     <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col">
         <div>
-          <div className="mt-8 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handlePrev}
-              disabled={stepIndex === 0}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-sm text-slate-500 disabled:opacity-40"
-            >
-              ←
-            </button>
-            <div className="flex-1">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-400">
-                <span>{currentStep.kicker}</span>
-                <span>{stepIndex + 1}/{STEPS.length}</span>
-              </div>
-              <div className="mt-1 h-3 rounded-full bg-slate-100">
+          <div className="mt-8">
+            <div className="mb-1 flex justify-end text-xs font-medium text-slate-400">
+              <span>{displayStepIndex + 1}/{STEPS.length}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handlePrev}
+                disabled={displayStepIndex === 0 || isStepTransitioning}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#132750] text-sm text-white shadow-[0_10px_20px_rgba(19,39,80,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                ←
+              </button>
+              <div className="h-3 flex-1 rounded-full bg-slate-100">
                 <div className="h-3 rounded-full bg-[#132750] transition-all" style={{ width: `${progress}%` }} />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
-          <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
-          <h1 className="mt-4 text-center text-[1.9rem] font-semibold tracking-tight text-slate-950">{currentStep.title}</h1>
+        <div className={`flex flex-1 flex-col transition-all duration-200 ease-out ${stepTransitionClass} ${isStepTransitioning ? "pointer-events-none" : ""}`}>
+          <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
+            <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
+            <h1 className="mt-4 text-center text-[1.9rem] font-semibold tracking-tight text-slate-950">{currentStep.title}</h1>
 
-          {currentStep.id === "company" ? (
-            <div ref={companyStepRef} className="mt-10 space-y-4">
-              <StepDropdown
-                label="업종 그룹"
-                placeholder="업종 그룹을 선택해 주세요"
-                options={INDUSTRIES}
-                selectedValue={selectedIndustry}
-                isOpen={openDropdown === "industry"}
-                onToggle={() => setOpenDropdown((prev) => (prev === "industry" ? null : "industry"))}
-                onSelect={(value) => {
-                  setSelectedIndustry(value as IndustryOption["id"]);
-                  setOpenDropdown(null);
-                }}
-              />
+            {currentStep.id === "company" ? (
+              <div ref={companyStepRef} className="mt-10 space-y-4">
+                <StepDropdown
+                  label="업종 그룹"
+                  placeholder="업종 그룹을 선택해 주세요"
+                  options={INDUSTRIES}
+                  selectedValue={selectedIndustry}
+                  isOpen={openDropdown === "industry"}
+                  onToggle={() => setOpenDropdown((prev) => (prev === "industry" ? null : "industry"))}
+                  onSelect={(value) => {
+                    setSelectedIndustry(value as IndustryOption["id"]);
+                    setOpenDropdown(null);
+                  }}
+                />
 
-              <StepDropdown
-                label="회사 규모"
-                placeholder="회사 규모를 선택해 주세요"
-                options={COMPANY_SCALES}
-                selectedValue={selectedScale}
-                isOpen={openDropdown === "scale"}
-                onToggle={() => setOpenDropdown((prev) => (prev === "scale" ? null : "scale"))}
-                onSelect={(value) => {
-                  setSelectedScale(value as ScaleOption["id"]);
-                  setOpenDropdown(null);
-                }}
-              />
-            </div>
-          ) : null}
-
-          {currentStep.id === "current" ? (
-            <div className="mt-10 space-y-4">
-              {CURRENT_STATES.map((option) => {
-                const isSelected = option.id === selectedCurrent;
-
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelectedCurrent(option.id)}
-                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
-                      ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
-                      : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                      }`}
-                  >
-                    <p className="text-base font-semibold">{option.title}</p>
-                    <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
-                      {option.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {currentStep.id === "services" ? (
-            <div className="mt-10">
-              <div className="mb-4 rounded-full bg-slate-100 px-4 py-2 text-center text-xs font-semibold text-slate-600">
-                복수 선택 가능
+                <StepDropdown
+                  label="회사 규모"
+                  placeholder="회사 규모를 선택해 주세요"
+                  options={COMPANY_SCALES}
+                  selectedValue={selectedScale}
+                  isOpen={openDropdown === "scale"}
+                  onToggle={() => setOpenDropdown((prev) => (prev === "scale" ? null : "scale"))}
+                  onSelect={(value) => {
+                    setSelectedScale(value as ScaleOption["id"]);
+                    setOpenDropdown(null);
+                  }}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {SERVICE_OPTIONS.map((option) => {
-                  const isSelected = selectedServices.includes(option.id);
+            ) : null}
+
+            {currentStep.id === "current" ? (
+              <div className="mt-10 space-y-4">
+                {CURRENT_STATES.map((option) => {
+                  const isSelected = option.id === selectedCurrent;
 
                   return (
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => toggleService(option.id)}
-                      className={`rounded-[1.2rem] px-4 py-4 text-left transition-all ${isSelected
+                      onClick={() => setSelectedCurrent(option.id)}
+                      className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
                         ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
                         : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
                         }`}
                     >
-                      <p className={`text-[11px] font-semibold tracking-[0.16em] ${isSelected ? "text-white/65" : "text-slate-400"}`}>
-                        {option.category}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold leading-5">{option.title}</p>
-                      <p className={`mt-2 text-xs leading-5 ${isSelected ? "text-white/75" : "text-slate-500"}`}>
+                      <p className="text-base font-semibold">{option.title}</p>
+                      <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
                         {option.description}
                       </p>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          {currentStep.id === "goal" ? (
-            <div className="mt-10 space-y-4">
-              {GOAL_OPTIONS.map((option) => {
-                const isSelected = option.id === selectedGoal;
+            {currentStep.id === "services" ? (
+              <div className="mt-10">
+                <div className="mb-4 rounded-full bg-slate-100 px-4 py-2 text-center text-xs font-semibold text-slate-600">
+                  복수 선택 가능
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {SERVICE_OPTIONS.map((option) => {
+                    const isSelected = selectedServices.includes(option.id);
 
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelectedGoal(option.id)}
-                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
-                      ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
-                      : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                      }`}
-                  >
-                    <p className="text-base font-semibold">{option.title}</p>
-                    <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
-                      {option.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => toggleService(option.id)}
+                        className={`rounded-[1.2rem] px-4 py-4 text-left transition-all ${isSelected
+                          ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                          : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                          }`}
+                      >
+                        <p className={`text-[11px] font-semibold tracking-[0.16em] ${isSelected ? "text-white/65" : "text-slate-400"}`}>
+                          {option.category}
+                        </p>
+                        <p className="mt-2 text-sm font-semibold leading-5">{option.title}</p>
+                        <p className={`mt-2 text-xs leading-5 ${isSelected ? "text-white/75" : "text-slate-500"}`}>
+                          {option.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
-        <div className="pb-2">
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!isStepValid}
-            className="w-full rounded-[1.35rem] bg-[#132750] px-5 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {stepIndex === STEPS.length - 1 ? "예상 제안 보기" : "다음 단계로"}
-          </button>
+            {currentStep.id === "goal" ? (
+              <div className="mt-10 space-y-4">
+                {GOAL_OPTIONS.map((option) => {
+                  const isSelected = option.id === selectedGoal;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setSelectedGoal(option.id)}
+                      className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
+                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                        }`}
+                    >
+                      <p className="text-base font-semibold">{option.title}</p>
+                      <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
+                        {option.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="pb-2">
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!isStepValid || isStepTransitioning}
+              className="w-full rounded-[1.35rem] bg-[#132750] px-5 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {displayStepIndex === STEPS.length - 1 ? "예상 도입금액 보기" : "다음 단계로"}
+            </button>
+          </div>
         </div>
       </div>
     </main>
