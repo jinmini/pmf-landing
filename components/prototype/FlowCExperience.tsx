@@ -1,0 +1,699 @@
+﻿"use client";
+
+import Image from "next/image";
+import { useMemo, useState } from "react";
+import type { PrototypeFlow } from "@/constants/prototypeFlows";
+import {
+  FLOW_C_COMPANY_SIZE_KEY_BY_ID,
+  FLOW_C_INDUSTRY_KEY_BY_ID,
+  FLOW_C_MATURITY_KEY_BY_ID,
+  FLOW_C_PRICING,
+  FLOW_C_SERVICE_KEY_BY_ID
+} from "@/constants/flowCPricing";
+import PrototypeCompareNav from "./PrototypeCompareNav";
+
+type FlowCExperienceProps = {
+  flow: PrototypeFlow;
+};
+
+type IndustryOption = {
+  id: keyof typeof FLOW_C_INDUSTRY_KEY_BY_ID;
+  title: string;
+};
+
+type ScaleOption = {
+  id: keyof typeof FLOW_C_COMPANY_SIZE_KEY_BY_ID;
+  title: string;
+};
+
+type CurrentStateOption = {
+  id: keyof typeof FLOW_C_MATURITY_KEY_BY_ID;
+  title: string;
+  description: string;
+};
+
+type ServiceOption = {
+  id: keyof typeof FLOW_C_SERVICE_KEY_BY_ID;
+  title: string;
+  category: string;
+  description: string;
+};
+
+type GoalOption = {
+  id: "cost" | "risk" | "funding";
+  title: string;
+  description: string;
+};
+
+type StepDefinition = {
+  id: "company" | "current" | "services" | "goal";
+  kicker: string;
+  title: string;
+  description: string;
+};
+
+type PricingRange = {
+  min: number;
+  max: number;
+};
+
+const INDUSTRIES: IndustryOption[] = [
+  { id: "mobility", title: "자동차 부품, 모빌리티" },
+  { id: "chemical", title: "화학 석유화학 소재" },
+  { id: "electronics", title: "전자 전기 반도체" },
+  { id: "metal", title: "철강 금속 비철" },
+  { id: "consumer", title: "소비재(화장품, 의류, 생활용품)" },
+  { id: "food", title: "식품 음료" },
+  { id: "energy", title: "에너지, 이차전지, 환경" },
+  { id: "other", title: "기타 제조(의약품, 조선, 건설자재 등)" }
+];
+
+const COMPANY_SCALES: ScaleOption[] = [
+  { id: "listed-large", title: "상장사 (자산 2조 이상)" },
+  { id: "listed-mid", title: "상장사 (자산 2조 미만)" },
+  { id: "affiliate", title: "비상장 대기업 계열사" },
+  { id: "mid-market", title: "비상장 중견기업 (매출 1,000억 이상)" },
+  { id: "sme", title: "비상장 중소기업 (매출 1,000억 미만)" }
+];
+
+const CURRENT_STATES: CurrentStateOption[] = [
+  {
+    id: "manual",
+    title: "대부분 수작업",
+    description: "엑셀, 메일, 개별 자료 취합 중심으로 운영 중입니다."
+  },
+  {
+    id: "partial",
+    title: "부분 시스템은 있으나 연결이 약함",
+    description: "일부 체계는 있으나 데이터 연결과 운영 일관성이 부족합니다."
+  },
+  {
+    id: "ready",
+    title: "기본 체계는 있고 고도화 필요",
+    description: "기본 운영 체계는 있으나 범위 확장과 정합성 보완이 필요한 상태입니다."
+  }
+];
+
+const SERVICE_OPTIONS: ServiceOption[] = [
+  {
+    id: "lca-pcf",
+    title: "LCA · PCF",
+    category: "Consulting",
+    description: "제품 단위 탄소데이터 산정과 기본 산정 체계 정립"
+  },
+  {
+    id: "ets",
+    title: "배출권거래제",
+    category: "Regulation",
+    description: "사업장 단위 규제 대응과 제출 체계 정비"
+  },
+  {
+    id: "cbam",
+    title: "CBAM",
+    category: "Regulation",
+    description: "수출 규제 대응을 위한 초기 진단과 제출 준비"
+  },
+  {
+    id: "scope123",
+    title: "Scope 1/2/3",
+    category: "Inventory",
+    description: "배출량 인벤토리 구조화와 간접배출 범위 확장"
+  },
+  {
+    id: "target-management",
+    title: "목표관리제",
+    category: "Regulation",
+    description: "국내 규제 제출 대응과 운영 기준 정리"
+  },
+  {
+    id: "sbti",
+    title: "SBTi",
+    category: "Disclosure",
+    description: "감축 목표 수립과 승인 대응 방향 설정"
+  },
+  {
+    id: "cdp",
+    title: "CDP",
+    category: "Disclosure",
+    description: "공시 대응과 대외 신뢰 확보를 위한 구조화"
+  },
+  {
+    id: "lync-platform",
+    title: "LynC(LCA Platform)",
+    category: "Platform",
+    description: "반복 운영을 위한 플랫폼 세팅과 온보딩 범위"
+  }
+];
+
+const GOAL_OPTIONS: GoalOption[] = [
+  {
+    id: "cost",
+    title: "운영 비용 절감",
+    description: "운영 효율과 내부 리소스 절감을 우선합니다."
+  },
+  {
+    id: "risk",
+    title: "규제 및 리스크 관리",
+    description: "규제 대응과 제출 리스크 완화를 우선합니다."
+  },
+  {
+    id: "funding",
+    title: "투자 유치 및 대외 신뢰 강화",
+    description: "공시 품질과 대외 커뮤니케이션 강화를 우선합니다."
+  }
+];
+
+const STEPS: StepDefinition[] = [
+  {
+    id: "company",
+    kicker: "Step 1",
+    title: "현재 조직 프로필을 선택해 주세요",
+    description: "제조업 중심의 제안 범위를 가늠하기 위해 업종과 회사 규모를 먼저 확인합니다."
+  },
+  {
+    id: "current",
+    kicker: "Step 2",
+    title: "현재 대응 수준은 어느 정도인가요?",
+    description: "현행 운영 방식에 따라 초기 구축과 운영 정착 범위가 달라집니다."
+  },
+  {
+    id: "services",
+    kicker: "Step 3",
+    title: "검토 중인 범위를 선택해 주세요",
+    description: "컨설팅, 규제 대응, 플랫폼 범위를 한 화면에서 함께 선택할 수 있습니다."
+  },
+  {
+    id: "goal",
+    kicker: "Step 4",
+    title: "이번 프로젝트의 우선 목표는 무엇인가요?",
+    description: "의사결정 목적에 맞춰 결과 해석 방향을 다르게 제안합니다."
+  }
+];
+
+const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
+
+function formatAmount(amount: number) {
+  const eok = Math.floor(amount / 100);
+  const remainder = amount % 100;
+
+  if (eok === 0) {
+    return `${amount * 100}만 원`;
+  }
+
+  if (remainder === 0) {
+    return `${eok}억 원`;
+  }
+
+  return `${eok}억 ${remainder * 100}만 원`;
+}
+
+function formatRange(range: PricingRange) {
+  return `${formatAmount(range.min)} ~ ${formatAmount(range.max)}`;
+}
+
+function roundRange(range: PricingRange): PricingRange {
+  return {
+    min: Math.max(1, Math.round(range.min)),
+    max: Math.max(1, Math.round(range.max))
+  };
+}
+
+function applyMultiplier(range: PricingRange, multiplier: PricingRange) {
+  return roundRange({
+    min: range.min * multiplier.min,
+    max: range.max * multiplier.max
+  });
+}
+
+function applyAddon(range: PricingRange, addon: PricingRange) {
+  return roundRange({
+    min: range.min * (1 + addon.min),
+    max: range.max * (1 + addon.max)
+  });
+}
+
+function buildBreakdown(total: PricingRange, hasPlatform: boolean, maturityId: CurrentStateOption["id"]) {
+  const softwareRatio = hasPlatform ? { min: 0.2, max: 0.4 } : { min: 0, max: 0.08 };
+  const pilotRatio =
+    maturityId === "manual"
+      ? { min: 0.1, max: 0.2 }
+      : maturityId === "partial"
+        ? { min: 0.08, max: 0.16 }
+        : { min: 0.05, max: 0.12 };
+
+  const software = roundRange({
+    min: total.min * softwareRatio.min,
+    max: total.max * softwareRatio.max
+  });
+  const pilot = roundRange({
+    min: total.min * pilotRatio.min,
+    max: total.max * pilotRatio.max
+  });
+  const consulting = roundRange({
+    min: Math.max(total.min - software.max - pilot.max, 1),
+    max: Math.max(total.max - software.min - pilot.min, 1)
+  });
+
+  return { consulting, software, pilot };
+}
+
+export default function FlowCExperience({ flow }: FlowCExperienceProps) {
+  const [started, setStarted] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [selectedIndustry, setSelectedIndustry] = useState<IndustryOption["id"] | "">("");
+  const [selectedScale, setSelectedScale] = useState<ScaleOption["id"] | "">("");
+  const [selectedCurrent, setSelectedCurrent] = useState<CurrentStateOption["id"] | "">("");
+  const [selectedServices, setSelectedServices] = useState<ServiceOption["id"][]>([]);
+  const [selectedGoal, setSelectedGoal] = useState<GoalOption["id"] | "">("");
+
+  const currentStep = STEPS[stepIndex];
+  const isComplete = stepIndex >= STEPS.length;
+  const progress = Math.round((Math.min(stepIndex, STEPS.length) / STEPS.length) * 100);
+
+  const isStepValid =
+    currentStep?.id === "company"
+      ? Boolean(selectedIndustry && selectedScale)
+      : currentStep?.id === "current"
+        ? Boolean(selectedCurrent)
+        : currentStep?.id === "services"
+          ? selectedServices.length > 0
+          : Boolean(selectedGoal);
+
+  const estimate = useMemo(() => {
+    if (!selectedIndustry || !selectedScale || !selectedCurrent || !selectedGoal || selectedServices.length === 0) {
+      return null;
+    }
+
+    const serviceRanges = selectedServices.map((serviceId) => {
+      const serviceKey = FLOW_C_SERVICE_KEY_BY_ID[serviceId];
+      return {
+        serviceId,
+        ...FLOW_C_PRICING.baseRanges.services[serviceKey]
+      };
+    });
+
+    const baseRange = serviceRanges.reduce(
+      (acc, item) => ({
+        min: acc.min + item.min,
+        max: acc.max + item.max
+      }),
+      { min: 0, max: 0 }
+    );
+
+    const companyMultiplier =
+      FLOW_C_PRICING.multipliers.companySize[FLOW_C_COMPANY_SIZE_KEY_BY_ID[selectedScale]];
+    const maturityMultiplier =
+      FLOW_C_PRICING.multipliers.maturity[FLOW_C_MATURITY_KEY_BY_ID[selectedCurrent]];
+    const industryMultiplier =
+      FLOW_C_PRICING.multipliers.industry[FLOW_C_INDUSTRY_KEY_BY_ID[selectedIndustry]];
+
+    let total = applyMultiplier(baseRange, { min: companyMultiplier.min, max: companyMultiplier.max });
+    total = applyMultiplier(total, { min: maturityMultiplier.min, max: maturityMultiplier.max });
+    total = applyMultiplier(total, { min: industryMultiplier.min, max: industryMultiplier.max });
+
+    const hasPlatform = selectedServices.includes("lync-platform");
+    if (hasPlatform) {
+      const addon = FLOW_C_PRICING.multipliers.addons.platform_included_pct;
+      total = applyAddon(total, { min: addon.min, max: addon.max });
+    }
+
+    const breakdown = buildBreakdown(total, hasPlatform, selectedCurrent);
+    const shortMessages: string[] = [FLOW_C_PRICING.shortMessages[0]];
+
+    if (hasPlatform) {
+      shortMessages.push(FLOW_C_PRICING.shortMessages[1]);
+    } else if (selectedCurrent === "manual") {
+      shortMessages.push(FLOW_C_PRICING.shortMessages[2]);
+    } else if (selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))) {
+      shortMessages.push(FLOW_C_PRICING.shortMessages[3]);
+    }
+
+    const recommendation =
+      selectedGoal === "risk" && selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))
+        ? "규제 대응형 제안"
+        : selectedGoal === "funding" && selectedServices.some((serviceId) => ["cdp", "sbti"].includes(serviceId))
+          ? "공시·신뢰 강화형 제안"
+          : hasPlatform && selectedServices.length >= 3
+            ? "컨설팅 + 플랫폼 결합형 제안"
+            : hasPlatform
+              ? "플랫폼 포함형 제안"
+              : "컨설팅 우선형 제안";
+
+    return {
+      total,
+      breakdown,
+      recommendation,
+      shortMessages: shortMessages.slice(0, 2),
+      serviceLabels: serviceRanges.map((service) => service.label)
+    };
+  }, [selectedCurrent, selectedGoal, selectedIndustry, selectedScale, selectedServices]);
+
+  const handleNext = () => {
+    if (!isStepValid) {
+      return;
+    }
+
+    setStepIndex((prev) => prev + 1);
+  };
+
+  const handlePrev = () => {
+    setStepIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleRestart = () => {
+    setStarted(false);
+    setStepIndex(0);
+    setSelectedIndustry("");
+    setSelectedScale("");
+    setSelectedCurrent("");
+    setSelectedServices([]);
+    setSelectedGoal("");
+  };
+
+  const toggleService = (serviceId: ServiceOption["id"]) => {
+    setSelectedServices((prev) =>
+      prev.includes(serviceId) ? prev.filter((item) => item !== serviceId) : [...prev, serviceId]
+    );
+  };
+
+  if (!started) {
+    return (
+      <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
+        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col items-center justify-between">
+          <PrototypeCompareNav current="flow-c" />
+          <div className="w-full pt-4 text-center">
+            <Image
+              src="/brands/cnri_logo.png"
+              alt="CNRI 로고"
+              width={420}
+              height={122}
+              className="mx-auto h-auto w-[240px] sm:w-[280px]"
+              priority
+            />
+          </div>
+
+          <div className="w-full text-center">
+            <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 예상 견적 시뮬레이터</p>
+            <h1 className="mt-4 text-[2rem] font-semibold tracking-tight text-slate-950">
+              제조업 ESG
+              <br />
+              예상 제안 시뮬레이터
+            </h1>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              업종, 규모, 현재 대응 수준, 검토 범위를 순서대로 선택하면
+              <br />
+              예상 제안 범위를 빠르게 확인할 수 있습니다.
+            </p>
+
+            <div className="mt-10 rounded-[2rem] bg-[radial-gradient(circle_at_top,#eff6ff_0%,#dbeafe_38%,#ffffff_76%)] px-6 py-10 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <div className="grid gap-3 text-left">
+                <div className="rounded-[1.3rem] bg-white/80 px-4 py-4 shadow-sm">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">STEP 1</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">업종 및 회사 규모 선택</p>
+                </div>
+                <div className="rounded-[1.3rem] bg-white/80 px-4 py-4 shadow-sm">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">STEP 2</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">현재 대응 수준 진단</p>
+                </div>
+                <div className="rounded-[1.3rem] bg-white/80 px-4 py-4 shadow-sm">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">STEP 3</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">컨설팅 및 플랫폼 범위 선택</p>
+                </div>
+                <div className="rounded-[1.3rem] bg-white/80 px-4 py-4 shadow-sm">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">STEP 4</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">의사결정 목표 확인</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full pb-4">
+            <button
+              type="button"
+              onClick={() => setStarted(true)}
+              className="w-full rounded-[1.4rem] bg-[#132750] px-5 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)] transition-transform hover:-translate-y-0.5"
+            >
+              예상 범위 확인하기
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isComplete && estimate) {
+    return (
+      <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
+        <PrototypeCompareNav current="flow-c" />
+        <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+          <div className="bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_45%,#f8fafc_100%)] px-6 pb-8 pt-6">
+            <Image
+              src="/brands/cnri_logo.png"
+              alt="CNRI 로고"
+              width={420}
+              height={122}
+              className="h-auto w-[210px]"
+            />
+            <p className="mt-8 text-sm font-semibold text-slate-600">예상 제안 범위</p>
+            <h1 className="mt-2 text-[2.15rem] font-semibold tracking-tight text-slate-950">
+              {formatRange(estimate.total)}
+            </h1>
+            <p className="mt-3 text-base leading-7 text-slate-700">{estimate.recommendation}</p>
+          </div>
+
+          <div className="px-6 py-7">
+            <div className="rounded-[1.5rem] bg-slate-50 px-5 py-4">
+              <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
+              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+                <div className="flex items-center justify-between gap-3">
+                  <span>컨설팅 범위</span>
+                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.consulting)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>소프트웨어·온보딩</span>
+                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.software)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>파일럿·운영 정착</span>
+                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.pilot)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[1.4rem] border border-slate-200 px-4 py-4">
+              <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">산정 기준</p>
+              <div className="mt-2 space-y-2">
+                {estimate.shortMessages.map((message) => (
+                  <p key={message} className="text-sm leading-7 text-slate-700">
+                    {message}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {estimate.serviceLabels.map((label) => (
+                <span key={label} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-7 space-y-2">
+              <button
+                type="button"
+                className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
+              >
+                {flow.ctaPrimary}
+              </button>
+              <button
+                type="button"
+                onClick={handleRestart}
+                className="w-full rounded-[1.2rem] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+              >
+                다시 시뮬레이션하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col">
+        <PrototypeCompareNav current="flow-c" />
+        <div>
+          <Image
+            src="/brands/cnri_logo.png"
+            alt="CNRI 로고"
+            width={420}
+            height={122}
+            className="mx-auto h-auto w-[220px] sm:w-[260px]"
+            priority
+          />
+
+          <div className="mt-8 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrev}
+              disabled={stepIndex === 0}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-sm text-slate-500 disabled:opacity-40"
+            >
+              ←
+            </button>
+            <div className="flex-1">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-400">
+                <span>{currentStep.kicker}</span>
+                <span>{stepIndex + 1}/{STEPS.length}</span>
+              </div>
+              <div className="mt-1 h-3 rounded-full bg-slate-100">
+                <div className="h-3 rounded-full bg-[#132750] transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
+          <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
+          <h1 className="mt-4 text-center text-[1.9rem] font-semibold tracking-tight text-slate-950">{currentStep.title}</h1>
+          <p className="mt-4 text-center text-base leading-7 text-slate-600">{currentStep.description}</p>
+
+          {currentStep.id === "company" ? (
+            <div className="mt-10 space-y-4">
+              <div className="rounded-[1.35rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+                <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">업종 그룹</p>
+                <select
+                  value={selectedIndustry}
+                  onChange={(event) => setSelectedIndustry(event.target.value as IndustryOption["id"])}
+                  className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition-colors focus:border-[#132750]"
+                >
+                  <option value="">업종 그룹을 선택해 주세요</option>
+                  {INDUSTRIES.map((industry) => (
+                    <option key={industry.id} value={industry.id}>
+                      {industry.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-[1.35rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+                <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">회사 규모</p>
+                <select
+                  value={selectedScale}
+                  onChange={(event) => setSelectedScale(event.target.value as ScaleOption["id"])}
+                  className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition-colors focus:border-[#132750]"
+                >
+                  <option value="">회사 규모를 선택해 주세요</option>
+                  {COMPANY_SCALES.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : null}
+
+          {currentStep.id === "current" ? (
+            <div className="mt-10 space-y-4">
+              {CURRENT_STATES.map((option) => {
+                const isSelected = option.id === selectedCurrent;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedCurrent(option.id)}
+                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${
+                      isSelected
+                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                    }`}
+                  >
+                    <p className="text-base font-semibold">{option.title}</p>
+                    <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
+                      {option.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {currentStep.id === "services" ? (
+            <div className="mt-10">
+              <div className="mb-4 rounded-full bg-slate-100 px-4 py-2 text-center text-xs font-semibold text-slate-600">
+                복수 선택 가능
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {SERVICE_OPTIONS.map((option) => {
+                  const isSelected = selectedServices.includes(option.id);
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => toggleService(option.id)}
+                      className={`rounded-[1.2rem] px-4 py-4 text-left transition-all ${
+                        isSelected
+                          ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                          : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                      }`}
+                    >
+                      <p className={`text-[11px] font-semibold tracking-[0.16em] ${isSelected ? "text-white/65" : "text-slate-400"}`}>
+                        {option.category}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold leading-5">{option.title}</p>
+                      <p className={`mt-2 text-xs leading-5 ${isSelected ? "text-white/75" : "text-slate-500"}`}>
+                        {option.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {currentStep.id === "goal" ? (
+            <div className="mt-10 space-y-4">
+              {GOAL_OPTIONS.map((option) => {
+                const isSelected = option.id === selectedGoal;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedGoal(option.id)}
+                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${
+                      isSelected
+                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                    }`}
+                  >
+                    <p className="text-base font-semibold">{option.title}</p>
+                    <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
+                      {option.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="pb-2">
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!isStepValid}
+            className="w-full rounded-[1.35rem] bg-[#132750] px-5 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {stepIndex === STEPS.length - 1 ? "예상 제안 보기" : "다음 단계로"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}

@@ -1,4 +1,4 @@
-export type FlowSlug = "flow-a" | "flow-b";
+export type FlowSlug = "flow-a" | "flow-b" | "flow-c";
 
 export type FlowOption = {
   label: string;
@@ -41,11 +41,11 @@ export type PrototypeFlow = {
 };
 
 export const PROTOTYPE_HUB = {
-  badge: "Interactive Prototypes",
-  title: "두 가지 진단 흐름",
+  badge: "프로토타입 비교",
+  title: "세 가지 진단 흐름",
   description:
-    "같은 제품 컨셉을 서로 다른 인터랙션 방식으로 체험할 수 있도록 구성했습니다.",
-  note: "A는 마이크로 진단, B는 인터랙티브 ROI 도구입니다."
+    "같은 제품 컨셉을 서로 다른 인터랙션 방식으로 비교할 수 있도록 구성했습니다.",
+  note: "A는 간단 진단, B는 ROI 진단, C는 제조업 중심 견적 시뮬레이션입니다."
 };
 
 export const PROTOTYPE_FLOWS: PrototypeFlow[] = [
@@ -226,10 +226,72 @@ export const PROTOTYPE_FLOWS: PrototypeFlow[] = [
         nextAction: "분기 단위 성과지표를 설정하고 확장 로드맵을 즉시 착수합니다."
       }
     ]
+  },
+  {
+    slug: "flow-c",
+    route: "/flow-c",
+    shortLabel: "플로우 C",
+    title: "제조업 견적 시뮬레이션",
+    subtitle: "제조업 조직에 맞춘 예상 범위와 제안 방향 제시",
+    tone: "구체적 · 신뢰형",
+    strategicFocus: "제안 범위 가시화",
+    summary:
+      "업종, 규모, 현재 대응 상태, 희망 범위를 함께 반영해 더 구체적인 컨설팅·플랫폼 도입 범위를 추정하는 흐름입니다.",
+    tags: ["제조업 특화", "복수 범위 선택", "예상 견적 제안"],
+    steps: [
+      {
+        id: "manufacturing-profile",
+        title: "제조업 조직 프로필",
+        description: "업종과 규모를 함께 확인해 기본 제안 범위를 가늠합니다.",
+        options: [
+          { label: "업종 및 매출 규모 기반 기본 범위 산정", score: 3 }
+        ]
+      },
+      {
+        id: "current-status",
+        title: "현재 대응 상황",
+        description: "현재 ESG 운영 방식에 따라 초기 진단 및 구축 범위가 달라집니다.",
+        options: [
+          { label: "현 상태 기반 난이도 반영", score: 3 }
+        ]
+      },
+      {
+        id: "solution-scope",
+        title: "희망 솔루션 범위",
+        description: "필요한 서비스와 플랫폼 범위를 함께 선택합니다.",
+        options: [
+          { label: "복수 서비스 범위 선택", score: 4 }
+        ]
+      },
+      {
+        id: "decision-priority",
+        title: "의사결정 우선순위",
+        description: "최종 도입 방향을 결정하는 핵심 우선순위를 반영합니다.",
+        options: [
+          { label: "의사결정 기준 기반 최종 권고", score: 3 }
+        ]
+      }
+    ],
+    captureMessage: "예상 견적표와 범위 설명서 전달 단계에서 연락처 확보가 필요한 구조",
+    ctaPrimary: "예상 제안 미팅 요청",
+    ctaSecondary: "상세 견적 시나리오 받기",
+    resultBands: [
+      {
+        min: 0,
+        max: 99,
+        headline: "제조업 특화 범위를 반영한 예상 제안 결과입니다",
+        recommendation: "선택 범위와 운영 상황을 반영해 컨설팅과 플랫폼 조합을 함께 제안합니다.",
+        rationale: "업종 특성과 현재 대응 수준에 따라 필요한 초기 진단, 구축, 운영 정착 범위가 달라집니다.",
+        operationalBenefit: "실행 우선순위 정리, 데이터 정합성 확보, 도입 범위 현실화",
+        projectDirection: "제조업 맞춤형 제안",
+        nextAction: "상세 데이터 구조와 내부 역할 범위를 확인해 제안 범위를 구체화합니다."
+      }
+    ]
   }
 ];
 
 export const FLOW_BY_SLUG: Record<FlowSlug, PrototypeFlow> = {
   "flow-a": PROTOTYPE_FLOWS[0],
-  "flow-b": PROTOTYPE_FLOWS[1]
+  "flow-b": PROTOTYPE_FLOWS[1],
+  "flow-c": PROTOTYPE_FLOWS[2]
 };
