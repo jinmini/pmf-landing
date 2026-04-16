@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import type { PrototypeFlow } from "@/constants/prototypeFlows";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FLOW_C_PAGE } from "@/constants/flowCContent";
 import {
   FLOW_C_COMPANY_SIZE_KEY_BY_ID,
   FLOW_C_INDUSTRY_KEY_BY_ID,
@@ -10,11 +10,6 @@ import {
   FLOW_C_PRICING,
   FLOW_C_SERVICE_KEY_BY_ID
 } from "@/constants/flowCPricing";
-import PrototypeCompareNav from "./PrototypeCompareNav";
-
-type FlowCExperienceProps = {
-  flow: PrototypeFlow;
-};
 
 type IndustryOption = {
   id: keyof typeof FLOW_C_INDUSTRY_KEY_BY_ID;
@@ -57,6 +52,11 @@ type PricingRange = {
   max: number;
 };
 
+type DropdownOption = {
+  id: string;
+  title: string;
+};
+
 const INDUSTRIES: IndustryOption[] = [
   { id: "mobility", title: "자동차 부품, 모빌리티" },
   { id: "chemical", title: "화학 석유화학 소재" },
@@ -72,8 +72,8 @@ const COMPANY_SCALES: ScaleOption[] = [
   { id: "listed-large", title: "상장사 (자산 2조 이상)" },
   { id: "listed-mid", title: "상장사 (자산 2조 미만)" },
   { id: "affiliate", title: "비상장 대기업 계열사" },
-  { id: "mid-market", title: "비상장 중견기업 (매출 1,000억 이상)" },
-  { id: "sme", title: "비상장 중소기업 (매출 1,000억 미만)" }
+  { id: "mid-market", title: "비상장 중견기업" },
+  { id: "sme", title: "비상장 중소기업" }
 ];
 
 const CURRENT_STATES: CurrentStateOption[] = [
@@ -185,7 +185,7 @@ const STEPS: StepDefinition[] = [
   {
     id: "goal",
     kicker: "Step 4",
-    title: "이번 프로젝트의 우선 목표는 무엇인가요?",
+    title: "고려중인 프로젝트의 최우선 목표는 무엇인가요?",
     description: "의사결정 목적에 맞춰 결과 해석 방향을 다르게 제안합니다."
   }
 ];
@@ -257,7 +257,85 @@ function buildBreakdown(total: PricingRange, hasPlatform: boolean, maturityId: C
   return { consulting, software, pilot };
 }
 
-export default function FlowCExperience({ flow }: FlowCExperienceProps) {
+type StepDropdownProps = {
+  label: string;
+  placeholder: string;
+  options: DropdownOption[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+};
+
+function StepDropdown({
+  label,
+  placeholder,
+  options,
+  selectedValue,
+  onSelect,
+  isOpen,
+  onToggle
+}: StepDropdownProps) {
+  const selectedLabel = options.find((option) => option.id === selectedValue)?.title;
+
+  return (
+    <div
+      className={`rounded-[1.35rem] border bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition-all ${isOpen
+        ? "border-[#5c7cff] shadow-[0_0_0_4px_rgba(92,124,255,0.14),0_12px_30px_rgba(15,23,42,0.06)]"
+        : "border-slate-200"
+        }`}
+    >
+      <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">{label}</p>
+
+      <div className="relative mt-3">
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          onClick={onToggle}
+          className={`flex w-full items-center justify-between rounded-[1rem] border px-4 py-3 text-left text-sm font-medium transition-all ${isOpen
+            ? "border-[#5c7cff] bg-white text-slate-900"
+            : "border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300"
+            }`}
+        >
+          <span className={selectedLabel ? "text-slate-900" : "text-slate-500"}>{selectedLabel ?? placeholder}</span>
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            className={`h-5 w-5 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          >
+            <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {isOpen ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.65rem)] z-20 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
+            <div className="max-h-64 overflow-y-auto px-2 py-2 sm:max-h-72">
+              {options.map((option) => {
+                const isSelected = option.id === selectedValue;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onSelect(option.id)}
+                    className={`flex w-full items-center justify-between rounded-[1rem] px-4 py-3 text-left text-sm transition-colors ${isSelected ? "bg-[#eef2ff] font-semibold text-[#3157df]" : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                  >
+                    <span>{option.title}</span>
+                    <span className={`text-base ${isSelected ? "text-[#3157df]" : "text-transparent"}`}>✓</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export default function FlowCExperience() {
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryOption["id"] | "">("");
@@ -265,10 +343,27 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
   const [selectedCurrent, setSelectedCurrent] = useState<CurrentStateOption["id"] | "">("");
   const [selectedServices, setSelectedServices] = useState<ServiceOption["id"][]>([]);
   const [selectedGoal, setSelectedGoal] = useState<GoalOption["id"] | "">("");
+  const [openDropdown, setOpenDropdown] = useState<"industry" | "scale" | null>(null);
+  const companyStepRef = useRef<HTMLDivElement | null>(null);
 
   const currentStep = STEPS[stepIndex];
   const isComplete = stepIndex >= STEPS.length;
   const progress = Math.round((Math.min(stepIndex, STEPS.length) / STEPS.length) * 100);
+
+  useEffect(() => {
+    setOpenDropdown(null);
+  }, [stepIndex]);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!companyStepRef.current?.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
 
   const isStepValid =
     currentStep?.id === "company"
@@ -380,7 +475,6 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
     return (
       <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
         <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col items-center justify-between">
-          <PrototypeCompareNav current="flow-c" />
           <div className="w-full pt-4 text-center">
             <Image
               src="/brands/cnri_logo.png"
@@ -393,7 +487,7 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
           </div>
 
           <div className="w-full text-center">
-            <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 예상 견적 시뮬레이터</p>
+            <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 탄소중립 예산 가이드</p>
             <h1 className="mt-4 text-[2rem] font-semibold tracking-tight text-slate-950">
               제조업 ESG
               <br />
@@ -444,7 +538,6 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
   if (isComplete && estimate) {
     return (
       <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
-        <PrototypeCompareNav current="flow-c" />
         <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
           <div className="bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_45%,#f8fafc_100%)] px-6 pb-8 pt-6">
             <Image
@@ -504,7 +597,7 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
                 type="button"
                 className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
               >
-                {flow.ctaPrimary}
+                {FLOW_C_PAGE.ctaPrimary}
               </button>
               <button
                 type="button"
@@ -523,7 +616,6 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
   return (
     <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col">
-        <PrototypeCompareNav current="flow-c" />
         <div>
           <Image
             src="/brands/cnri_logo.png"
@@ -561,38 +653,32 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
           <p className="mt-4 text-center text-base leading-7 text-slate-600">{currentStep.description}</p>
 
           {currentStep.id === "company" ? (
-            <div className="mt-10 space-y-4">
-              <div className="rounded-[1.35rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">업종 그룹</p>
-                <select
-                  value={selectedIndustry}
-                  onChange={(event) => setSelectedIndustry(event.target.value as IndustryOption["id"])}
-                  className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition-colors focus:border-[#132750]"
-                >
-                  <option value="">업종 그룹을 선택해 주세요</option>
-                  {INDUSTRIES.map((industry) => (
-                    <option key={industry.id} value={industry.id}>
-                      {industry.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div ref={companyStepRef} className="mt-10 space-y-4">
+              <StepDropdown
+                label="업종 그룹"
+                placeholder="업종 그룹을 선택해 주세요"
+                options={INDUSTRIES}
+                selectedValue={selectedIndustry}
+                isOpen={openDropdown === "industry"}
+                onToggle={() => setOpenDropdown((prev) => (prev === "industry" ? null : "industry"))}
+                onSelect={(value) => {
+                  setSelectedIndustry(value as IndustryOption["id"]);
+                  setOpenDropdown(null);
+                }}
+              />
 
-              <div className="rounded-[1.35rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">회사 규모</p>
-                <select
-                  value={selectedScale}
-                  onChange={(event) => setSelectedScale(event.target.value as ScaleOption["id"])}
-                  className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition-colors focus:border-[#132750]"
-                >
-                  <option value="">회사 규모를 선택해 주세요</option>
-                  {COMPANY_SCALES.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <StepDropdown
+                label="회사 규모"
+                placeholder="회사 규모를 선택해 주세요"
+                options={COMPANY_SCALES}
+                selectedValue={selectedScale}
+                isOpen={openDropdown === "scale"}
+                onToggle={() => setOpenDropdown((prev) => (prev === "scale" ? null : "scale"))}
+                onSelect={(value) => {
+                  setSelectedScale(value as ScaleOption["id"]);
+                  setOpenDropdown(null);
+                }}
+              />
             </div>
           ) : null}
 
@@ -606,11 +692,10 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
                     key={option.id}
                     type="button"
                     onClick={() => setSelectedCurrent(option.id)}
-                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${
-                      isSelected
-                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
-                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                    }`}
+                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
+                      ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                      : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                      }`}
                   >
                     <p className="text-base font-semibold">{option.title}</p>
                     <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>
@@ -636,11 +721,10 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
                       key={option.id}
                       type="button"
                       onClick={() => toggleService(option.id)}
-                      className={`rounded-[1.2rem] px-4 py-4 text-left transition-all ${
-                        isSelected
-                          ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
-                          : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                      }`}
+                      className={`rounded-[1.2rem] px-4 py-4 text-left transition-all ${isSelected
+                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                        }`}
                     >
                       <p className={`text-[11px] font-semibold tracking-[0.16em] ${isSelected ? "text-white/65" : "text-slate-400"}`}>
                         {option.category}
@@ -666,11 +750,10 @@ export default function FlowCExperience({ flow }: FlowCExperienceProps) {
                     key={option.id}
                     type="button"
                     onClick={() => setSelectedGoal(option.id)}
-                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${
-                      isSelected
-                        ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
-                        : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                    }`}
+                    className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
+                      ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
+                      : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                      }`}
                   >
                     <p className="text-base font-semibold">{option.title}</p>
                     <p className={`mt-2 text-sm leading-6 ${isSelected ? "text-white/80" : "text-slate-500"}`}>

@@ -7,10 +7,6 @@ type FlowPrototypePageProps = {
 };
 
 export default function FlowPrototypePage({ flow }: FlowPrototypePageProps) {
-  if (flow.slug === "flow-a" || flow.slug === "flow-b") {
-    return <FlowPrototypeClient flow={flow} />;
-  }
-
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#ffffff_0%,#f8fafc_45%,#f1f5f9_100%)] px-4 py-5 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-5xl">

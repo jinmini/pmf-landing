@@ -273,7 +273,7 @@ export const PROTOTYPE_FLOWS: PrototypeFlow[] = [
       }
     ],
     captureMessage: "예상 견적표와 범위 설명서 전달 단계에서 연락처 확보가 필요한 구조",
-    ctaPrimary: "예상 제안 미팅 요청",
+    ctaPrimary: "추가로 궁금한 점 자유롭게 문의",
     ctaSecondary: "상세 견적 시나리오 받기",
     resultBands: [
       {

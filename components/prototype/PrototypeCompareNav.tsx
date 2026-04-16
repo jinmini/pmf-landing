@@ -1,11 +1,11 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 type PrototypeCompareNavProps = {
   current: "home" | "flow-a" | "flow-b" | "flow-c";
 };
 
 const ITEMS = [
-  { id: "home", label: "메인", href: "/" },
+  { id: "home", label: "내부", href: "/internal" },
   { id: "flow-a", label: "A안", href: "/flow-a" },
   { id: "flow-b", label: "B안", href: "/flow-b" },
   { id: "flow-c", label: "C안", href: "/flow-c" }
