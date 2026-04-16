@@ -73,8 +73,8 @@ const COMPANY_SCALES: ScaleOption[] = [
   { id: "listed-large", title: "상장사 (자산 2조 이상)" },
   { id: "listed-mid", title: "상장사 (자산 2조 미만)" },
   { id: "affiliate", title: "비상장 대기업 계열사" },
-  { id: "mid-market", title: "비상장 중견기업 (매출 1,000억 이상)" },
-  { id: "sme", title: "비상장 중소기업 (매출 1,000억 미만)" }
+  { id: "mid-market", title: "비상장 중견기업" },
+  { id: "sme", title: "비상장 중소기업" }
 ];
 
 const CURRENT_STATES: CurrentStateOption[] = [
