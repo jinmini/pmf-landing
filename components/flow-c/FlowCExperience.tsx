@@ -703,7 +703,7 @@ export default function FlowCExperience() {
                 onClick={handleRestart}
                 className="w-full rounded-[1.2rem] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
               >
-                다시 시뮬레이션하기
+                다시 진단하기
               </button>
             </div>
 
