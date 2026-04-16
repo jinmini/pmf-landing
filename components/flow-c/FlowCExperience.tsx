@@ -1,13 +1,15 @@
 ﻿"use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FLOW_C_PAGE } from "@/constants/flowCContent";
 import {
   FLOW_C_COMPANY_SIZE_KEY_BY_ID,
   FLOW_C_INDUSTRY_KEY_BY_ID,
+  FLOW_C_LYNC_ONBOARDING_TABLE,
   FLOW_C_MATURITY_KEY_BY_ID,
-  FLOW_C_PRICING,
+  FLOW_C_PRICE_RANGE_OFFSET,
+  FLOW_C_PRICE_TABLE,
+  FLOW_C_SHORT_MESSAGES,
   FLOW_C_SERVICE_KEY_BY_ID
 } from "@/constants/flowCPricing";
 
@@ -35,7 +37,7 @@ type ServiceOption = {
 };
 
 type GoalOption = {
-  id: "cost" | "risk" | "funding";
+  id: "customer" | "risk" | "proactive" | "trust";
   title: string;
   description: string;
 };
@@ -44,7 +46,6 @@ type StepDefinition = {
   id: "company" | "current" | "services" | "goal";
   kicker: string;
   title: string;
-  description: string;
 };
 
 type PricingRange = {
@@ -72,8 +73,8 @@ const COMPANY_SCALES: ScaleOption[] = [
   { id: "listed-large", title: "상장사 (자산 2조 이상)" },
   { id: "listed-mid", title: "상장사 (자산 2조 미만)" },
   { id: "affiliate", title: "비상장 대기업 계열사" },
-  { id: "mid-market", title: "비상장 중견기업" },
-  { id: "sme", title: "비상장 중소기업" }
+  { id: "mid-market", title: "비상장 중견기업 (매출 1,000억 이상)" },
+  { id: "sme", title: "비상장 중소기업 (매출 1,000억 미만)" }
 ];
 
 const CURRENT_STATES: CurrentStateOption[] = [
@@ -147,9 +148,9 @@ const SERVICE_OPTIONS: ServiceOption[] = [
 
 const GOAL_OPTIONS: GoalOption[] = [
   {
-    id: "cost",
-    title: "운영 비용 절감",
-    description: "운영 효율과 내부 리소스 절감을 우선합니다."
+    id: "customer",
+    title: "고객사 요구 대응",
+    description: "고객 요청에 맞춰 필요한 범위와 대응 속도를 우선적으로 검토합니다."
   },
   {
     id: "risk",
@@ -157,9 +158,14 @@ const GOAL_OPTIONS: GoalOption[] = [
     description: "규제 대응과 제출 리스크 완화를 우선합니다."
   },
   {
-    id: "funding",
-    title: "투자 유치 및 대외 신뢰 강화",
-    description: "공시 품질과 대외 커뮤니케이션 강화를 우선합니다."
+    id: "proactive",
+    title: "선제적 대응체계 구축",
+    description: "향후 확장 가능한 운영 구조와 내부 대응 체계 마련을 우선합니다."
+  },
+  {
+    id: "trust",
+    title: "대외 신뢰 강화",
+    description: "공시 품질과 외부 커뮤니케이션 신뢰도를 높이는 방향을 우선합니다."
   }
 ];
 
@@ -167,44 +173,40 @@ const STEPS: StepDefinition[] = [
   {
     id: "company",
     kicker: "Step 1",
-    title: "현재 조직 프로필을 선택해 주세요",
-    description: "제조업 중심의 제안 범위를 가늠하기 위해 업종과 회사 규모를 먼저 확인합니다."
+    title: "현재 조직 프로필을 선택해 주세요"
   },
   {
     id: "current",
     kicker: "Step 2",
-    title: "현재 대응 수준은 어느 정도인가요?",
-    description: "현행 운영 방식에 따라 초기 구축과 운영 정착 범위가 달라집니다."
+    title: "현재 대응 수준은 어느 정도인가요?"
   },
   {
     id: "services",
     kicker: "Step 3",
-    title: "검토 중인 범위를 선택해 주세요",
-    description: "컨설팅, 규제 대응, 플랫폼 범위를 한 화면에서 함께 선택할 수 있습니다."
+    title: "검토 중인 범위를 선택해 주세요"
   },
   {
     id: "goal",
     kicker: "Step 4",
-    title: "고려중인 프로젝트의 최우선 목표는 무엇인가요?",
-    description: "의사결정 목적에 맞춰 결과 해석 방향을 다르게 제안합니다."
+    title: "고려중인 프로젝트의 최우선 목표는 무엇인가요?"
   }
 ];
 
 const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
 
 function formatAmount(amount: number) {
-  const eok = Math.floor(amount / 100);
-  const remainder = amount % 100;
+  const eok = Math.floor(amount / 10000);
+  const remainder = amount % 10000;
 
   if (eok === 0) {
-    return `${amount * 100}만 원`;
+    return `${amount.toLocaleString("ko-KR")}만 원`;
   }
 
   if (remainder === 0) {
     return `${eok}억 원`;
   }
 
-  return `${eok}억 ${remainder * 100}만 원`;
+  return `${eok}억 ${remainder.toLocaleString("ko-KR")}만 원`;
 }
 
 function formatRange(range: PricingRange) {
@@ -213,48 +215,23 @@ function formatRange(range: PricingRange) {
 
 function roundRange(range: PricingRange): PricingRange {
   return {
-    min: Math.max(1, Math.round(range.min)),
-    max: Math.max(1, Math.round(range.max))
+    min: Math.max(0, Math.round(range.min)),
+    max: Math.max(0, Math.round(range.max))
   };
 }
 
-function applyMultiplier(range: PricingRange, multiplier: PricingRange) {
+function buildFixedRange(baseAmount: number) {
   return roundRange({
-    min: range.min * multiplier.min,
-    max: range.max * multiplier.max
+    min: baseAmount - FLOW_C_PRICE_RANGE_OFFSET,
+    max: baseAmount + FLOW_C_PRICE_RANGE_OFFSET
   });
 }
 
-function applyAddon(range: PricingRange, addon: PricingRange) {
+function mergeRanges(ranges: PricingRange[]) {
   return roundRange({
-    min: range.min * (1 + addon.min),
-    max: range.max * (1 + addon.max)
+    min: ranges.reduce((sum, range) => sum + range.min, 0),
+    max: ranges.reduce((sum, range) => sum + range.max, 0)
   });
-}
-
-function buildBreakdown(total: PricingRange, hasPlatform: boolean, maturityId: CurrentStateOption["id"]) {
-  const softwareRatio = hasPlatform ? { min: 0.2, max: 0.4 } : { min: 0, max: 0.08 };
-  const pilotRatio =
-    maturityId === "manual"
-      ? { min: 0.1, max: 0.2 }
-      : maturityId === "partial"
-        ? { min: 0.08, max: 0.16 }
-        : { min: 0.05, max: 0.12 };
-
-  const software = roundRange({
-    min: total.min * softwareRatio.min,
-    max: total.max * softwareRatio.max
-  });
-  const pilot = roundRange({
-    min: total.min * pilotRatio.min,
-    max: total.max * pilotRatio.max
-  });
-  const consulting = roundRange({
-    min: Math.max(total.min - software.max - pilot.max, 1),
-    max: Math.max(total.max - software.min - pilot.min, 1)
-  });
-
-  return { consulting, software, pilot };
 }
 
 type StepDropdownProps = {
@@ -379,66 +356,52 @@ export default function FlowCExperience() {
       return null;
     }
 
+    const companyKey = FLOW_C_COMPANY_SIZE_KEY_BY_ID[selectedScale];
     const serviceRanges = selectedServices.map((serviceId) => {
       const serviceKey = FLOW_C_SERVICE_KEY_BY_ID[serviceId];
+      const basePrice = FLOW_C_PRICE_TABLE[companyKey][serviceKey];
+
       return {
         serviceId,
-        ...FLOW_C_PRICING.baseRanges.services[serviceKey]
+        label: SERVICE_OPTIONS.find((option) => option.id === serviceId)?.title ?? serviceId,
+        basePrice,
+        range: buildFixedRange(basePrice)
       };
     });
 
-    const baseRange = serviceRanges.reduce(
-      (acc, item) => ({
-        min: acc.min + item.min,
-        max: acc.max + item.max
-      }),
-      { min: 0, max: 0 }
-    );
-
-    const companyMultiplier =
-      FLOW_C_PRICING.multipliers.companySize[FLOW_C_COMPANY_SIZE_KEY_BY_ID[selectedScale]];
-    const maturityMultiplier =
-      FLOW_C_PRICING.multipliers.maturity[FLOW_C_MATURITY_KEY_BY_ID[selectedCurrent]];
-    const industryMultiplier =
-      FLOW_C_PRICING.multipliers.industry[FLOW_C_INDUSTRY_KEY_BY_ID[selectedIndustry]];
-
-    let total = applyMultiplier(baseRange, { min: companyMultiplier.min, max: companyMultiplier.max });
-    total = applyMultiplier(total, { min: maturityMultiplier.min, max: maturityMultiplier.max });
-    total = applyMultiplier(total, { min: industryMultiplier.min, max: industryMultiplier.max });
-
     const hasPlatform = selectedServices.includes("lync-platform");
-    if (hasPlatform) {
-      const addon = FLOW_C_PRICING.multipliers.addons.platform_included_pct;
-      total = applyAddon(total, { min: addon.min, max: addon.max });
-    }
+    const solutionRange = mergeRanges(serviceRanges.map((service) => service.range));
+    const onboardingRange = hasPlatform ? buildFixedRange(FLOW_C_LYNC_ONBOARDING_TABLE[companyKey]) : null;
+    const total = onboardingRange ? mergeRanges([solutionRange, onboardingRange]) : solutionRange;
 
-    const breakdown = buildBreakdown(total, hasPlatform, selectedCurrent);
-    const shortMessages: string[] = [FLOW_C_PRICING.shortMessages[0]];
-
+    const shortMessages: string[] = [FLOW_C_SHORT_MESSAGES.base, FLOW_C_SHORT_MESSAGES.variance];
     if (hasPlatform) {
-      shortMessages.push(FLOW_C_PRICING.shortMessages[1]);
-    } else if (selectedCurrent === "manual") {
-      shortMessages.push(FLOW_C_PRICING.shortMessages[2]);
-    } else if (selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))) {
-      shortMessages.push(FLOW_C_PRICING.shortMessages[3]);
+      shortMessages.push(FLOW_C_SHORT_MESSAGES.onboarding);
     }
 
     const recommendation =
-      selectedGoal === "risk" && selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))
-        ? "규제 대응형 제안"
-        : selectedGoal === "funding" && selectedServices.some((serviceId) => ["cdp", "sbti"].includes(serviceId))
-          ? "공시·신뢰 강화형 제안"
-          : hasPlatform && selectedServices.length >= 3
-            ? "컨설팅 + 플랫폼 결합형 제안"
-            : hasPlatform
-              ? "플랫폼 포함형 제안"
-              : "컨설팅 우선형 제안";
+      selectedGoal === "customer"
+        ? "고객사 대응형 제안"
+        : selectedGoal === "risk" && selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))
+          ? "규제 대응형 제안"
+          : selectedGoal === "trust" && selectedServices.some((serviceId) => ["cdp", "sbti"].includes(serviceId))
+            ? "대외 신뢰 강화형 제안"
+            : selectedGoal === "proactive"
+              ? "선제 대응 체계형 제안"
+              : hasPlatform && selectedServices.length >= 3
+                ? "컨설팅 + 플랫폼 결합형 제안"
+                : hasPlatform
+                  ? "플랫폼 포함형 제안"
+                  : "컨설팅 우선형 제안";
 
     return {
       total,
-      breakdown,
+      breakdown: {
+        solution: solutionRange,
+        onboarding: onboardingRange
+      },
       recommendation,
-      shortMessages: shortMessages.slice(0, 2),
+      shortMessages,
       serviceLabels: serviceRanges.map((service) => service.label)
     };
   }, [selectedCurrent, selectedGoal, selectedIndustry, selectedScale, selectedServices]);
@@ -475,29 +438,21 @@ export default function FlowCExperience() {
     return (
       <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
         <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col items-center justify-between">
-          <div className="w-full pt-4 text-center">
-            <Image
-              src="/brands/cnri_logo.png"
-              alt="CNRI 로고"
-              width={420}
-              height={122}
-              className="mx-auto h-auto w-[240px] sm:w-[280px]"
-              priority
-            />
-          </div>
-
           <div className="w-full text-center">
-            <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 탄소중립 예산 가이드</p>
-            <h1 className="mt-4 text-[2rem] font-semibold tracking-tight text-slate-950">
-              제조업 ESG
-              <br />
-              예상 제안 시뮬레이터
-            </h1>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
-              업종, 규모, 현재 대응 수준, 검토 범위를 순서대로 선택하면
-              <br />
-              예상 제안 범위를 빠르게 확인할 수 있습니다.
-            </p>
+            <div className="rounded-[2.25rem] border border-slate-200 bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf4ff_36%,#ffffff_76%)] px-6 py-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <p className="text-sm font-semibold tracking-[0.18em] text-brand-700">제조업 탄소중립 예산 가이드</p>
+              <h1 className="mt-4 text-[1.5rem] font-semibold tracking-tight text-slate-950">
+                우리 회사
+                <br />
+                탄소중립 예산 한 번에 알아보기
+                <span className="text-brand-700"></span>
+              </h1>
+              <p className="mt-4 text-sm leading-7 text-slate-600">
+                업종, 규모, 현재 대응 수준, 검토 범위를 차례대로 선택하면
+                <br />
+                예상 제안 범위와 검토 방향을 빠르게 확인할 수 있습니다.
+              </p>
+            </div>
 
             <div className="mt-10 rounded-[2rem] bg-[radial-gradient(circle_at_top,#eff6ff_0%,#dbeafe_38%,#ffffff_76%)] px-6 py-10 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
               <div className="grid gap-3 text-left">
@@ -540,13 +495,6 @@ export default function FlowCExperience() {
       <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
           <div className="bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_45%,#f8fafc_100%)] px-6 pb-8 pt-6">
-            <Image
-              src="/brands/cnri_logo.png"
-              alt="CNRI 로고"
-              width={420}
-              height={122}
-              className="h-auto w-[210px]"
-            />
             <p className="mt-8 text-sm font-semibold text-slate-600">예상 제안 범위</p>
             <h1 className="mt-2 text-[2.15rem] font-semibold tracking-tight text-slate-950">
               {formatRange(estimate.total)}
@@ -559,16 +507,14 @@ export default function FlowCExperience() {
               <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
               <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
                 <div className="flex items-center justify-between gap-3">
-                  <span>컨설팅 범위</span>
-                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.consulting)}</span>
+                  <span>선택 솔루션 범위</span>
+                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.solution)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span>소프트웨어·온보딩</span>
-                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.software)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>파일럿·운영 정착</span>
-                  <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.pilot)}</span>
+                  <span>LynC 온보딩</span>
+                  <span className="font-semibold text-slate-900">
+                    {estimate.breakdown.onboarding ? formatRange(estimate.breakdown.onboarding) : "미포함"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -593,12 +539,14 @@ export default function FlowCExperience() {
             </div>
 
             <div className="mt-7 space-y-2">
-              <button
-                type="button"
-                className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
+              <a
+                href={FLOW_C_PAGE.ctaPrimaryHref}
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-center text-sm font-semibold text-white"
               >
                 {FLOW_C_PAGE.ctaPrimary}
-              </button>
+              </a>
               <button
                 type="button"
                 onClick={handleRestart}
@@ -607,6 +555,8 @@ export default function FlowCExperience() {
                 다시 시뮬레이션하기
               </button>
             </div>
+
+            <p className="mt-8 text-center text-xs text-slate-400">Copyright © 2026 by 탄소중립연구원</p>
           </div>
         </div>
       </main>
@@ -617,15 +567,6 @@ export default function FlowCExperience() {
     <main className="min-h-screen bg-white px-5 py-8 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col">
         <div>
-          <Image
-            src="/brands/cnri_logo.png"
-            alt="CNRI 로고"
-            width={420}
-            height={122}
-            className="mx-auto h-auto w-[220px] sm:w-[260px]"
-            priority
-          />
-
           <div className="mt-8 flex items-center gap-3">
             <button
               type="button"
@@ -650,7 +591,6 @@ export default function FlowCExperience() {
         <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
           <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
           <h1 className="mt-4 text-center text-[1.9rem] font-semibold tracking-tight text-slate-950">{currentStep.title}</h1>
-          <p className="mt-4 text-center text-base leading-7 text-slate-600">{currentStep.description}</p>
 
           {currentStep.id === "company" ? (
             <div ref={companyStepRef} className="mt-10 space-y-4">
