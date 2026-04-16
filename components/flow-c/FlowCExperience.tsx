@@ -193,6 +193,7 @@ const STEPS: StepDefinition[] = [
 ];
 
 const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
+const HERO_HEADLINE_LINES = ["탄소 규제 대응 비용,", "1분 만에 확인해보세요"];
 
 function formatAmount(amount: number) {
   const eok = Math.floor(amount / 10000);
@@ -559,10 +560,27 @@ export default function FlowCExperience() {
           <div>
             <div className="rounded-[2rem] border border-white/60 bg-white/70 px-6 py-7 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur">
               <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 규제 비용 진단</p>
-              <h1 className="mt-4 text-[2.06rem] font-[800] leading-[1.24] tracking-[-0.02em] text-slate-950 sm:text-[2.2rem]">
-                탄소 규제 대응 비용,
-                <br />
-                1분 만에 확인해보세요
+              <h1
+                aria-label={HERO_HEADLINE_LINES.join(" ")}
+                className="mt-4 text-[2.06rem] font-[800] leading-[1.24] tracking-[-0.02em] text-slate-950 sm:text-[2.2rem]"
+              >
+                {HERO_HEADLINE_LINES.map((line, lineIndex) => (
+                  <span key={line} aria-hidden="true" className="block">
+                    {line.split("").map((char, charIndex) => {
+                      const delay = (lineIndex * 10 + charIndex) * 36;
+
+                      return (
+                        <span
+                          key={`${lineIndex}-${charIndex}-${char}`}
+                          className="flow-c-hero-char inline-block"
+                          style={{ animationDelay: `${delay}ms` }}
+                        >
+                          {char === " " ? "\u00A0" : char}
+                        </span>
+                      );
+                    })}
+                  </span>
+                ))}
               </h1>
             </div>
 
