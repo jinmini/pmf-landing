@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { EstimateRequestApiResponse, EstimateRequestPayload } from "@/types/estimateRequest";
 import {
   FLOW_C_COMPANY_SIZE_KEY_BY_ID,
   FLOW_C_INDUSTRY_KEY_BY_ID,
@@ -463,7 +464,8 @@ export default function FlowCExperience() {
   const [detailChecklistState, setDetailChecklistState] = useState<Record<string, boolean>>({});
   const [requestEmail, setRequestEmail] = useState("");
   const [requestEmailTouched, setRequestEmailTouched] = useState(false);
-  const [requestSubmitted, setRequestSubmitted] = useState(false);
+  const [requestSubmitState, setRequestSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [requestSubmitError, setRequestSubmitError] = useState("");
   const companyStepRef = useRef<HTMLDivElement | null>(null);
   const stepExitTimerRef = useRef<number | null>(null);
   const stepEnterTimerRef = useRef<number | null>(null);
@@ -705,7 +707,8 @@ export default function FlowCExperience() {
     setDetailChecklistState({});
     setRequestEmail("");
     setRequestEmailTouched(false);
-    setRequestSubmitted(false);
+    setRequestSubmitState("idle");
+    setRequestSubmitError("");
   };
 
   const toggleService = (serviceId: ServiceOption["id"]) => {
@@ -726,15 +729,79 @@ export default function FlowCExperience() {
     }));
   };
 
-  const handleSubmitRequestEmail = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitRequestEmail = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setRequestEmailTouched(true);
 
-    if (!isRequestEmailValid) {
+    if (!isRequestEmailValid || requestSubmitState === "submitting") {
       return;
     }
 
-    setRequestSubmitted(true);
+    if (!estimate || !selectedIndustry || !selectedScale || !selectedCurrent) {
+      setRequestSubmitState("error");
+      setRequestSubmitError("선택값이 완성되지 않아 요청을 보낼 수 없습니다. 다시 시도해 주세요.");
+      return;
+    }
+
+    const normalizedEmail = requestEmail.trim().toLowerCase();
+    const serviceProgress = detailServices.map((service) => {
+      const checkedCount = service.checklist.filter((item) => detailChecklistState[`${service.id}:${item.id}`]).length;
+
+      return {
+        id: service.id,
+        title: service.title,
+        checkedCount,
+        totalCount: service.checklist.length
+      };
+    });
+
+    const payload: EstimateRequestPayload = {
+      email: normalizedEmail,
+      source: "flow-c",
+      selections: {
+        industryId: selectedIndustry,
+        scaleId: selectedScale,
+        currentStateId: selectedCurrent,
+        serviceIds: selectedServices,
+        goalIds: selectedGoals
+      },
+      estimate: {
+        min: estimate.total.min,
+        max: estimate.total.max,
+        recommendation: estimate.recommendation,
+        serviceBreakdown: estimate.serviceBreakdown
+      },
+      detailDiagnosis: {
+        checklistState: detailChecklistState,
+        serviceProgress
+      },
+      submittedAt: new Date().toISOString()
+    };
+
+    setRequestSubmitState("submitting");
+    setRequestSubmitError("");
+
+    try {
+      const response = await fetch("/api/estimate-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = (await response.json()) as EstimateRequestApiResponse;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.ok ? "요청 처리 중 오류가 발생했습니다." : result.error);
+      }
+
+      setRequestEmail(normalizedEmail);
+      setRequestSubmitState("success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "요청 전송 중 오류가 발생했습니다.";
+      setRequestSubmitState("error");
+      setRequestSubmitError(message);
+    }
   };
 
   if (!started) {
@@ -925,8 +992,9 @@ export default function FlowCExperience() {
                 value={requestEmail}
                 onChange={(event) => {
                   setRequestEmail(event.target.value);
-                  if (requestSubmitted) {
-                    setRequestSubmitted(false);
+                  if (requestSubmitState !== "idle") {
+                    setRequestSubmitState("idle");
+                    setRequestSubmitError("");
                   }
                 }}
                 onBlur={() => setRequestEmailTouched(true)}
@@ -939,15 +1007,18 @@ export default function FlowCExperience() {
               {requestEmailTouched && !isRequestEmailValid ? (
                 <p className="mt-2 text-xs text-red-500">유효한 이메일 형식으로 입력해 주세요.</p>
               ) : null}
-              {requestSubmitted ? (
-                <p className="mt-2 text-xs text-[#2f63dd]">요청용 메일이 확인되었습니다. 실제 접수 연동 시 바로 활용할 수 있습니다.</p>
+              {requestSubmitState === "success" ? (
+                <p className="mt-2 text-xs text-[#2f63dd]">요청이 접수되었습니다. 담당자가 상세 견적 안내를 드릴 예정입니다.</p>
+              ) : null}
+              {requestSubmitState === "error" ? (
+                <p className="mt-2 text-xs text-red-500">{requestSubmitError || "요청 전송 중 오류가 발생했습니다."}</p>
               ) : null}
               <button
                 type="submit"
                 className="mt-3 w-full rounded-[0.95rem] bg-[#132750] px-3 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!isRequestEmailValid}
+                disabled={!isRequestEmailValid || requestSubmitState === "submitting" || requestSubmitState === "success"}
               >
-                상세 견적 요청 등록
+                {requestSubmitState === "submitting" ? "등록 중..." : requestSubmitState === "success" ? "요청 접수 완료" : "상세 견적 요청 등록"}
               </button>
             </form>
             <button
