@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FLOW_C_PAGE } from "@/constants/flowCContent";
 import {
   FLOW_C_COMPANY_SIZE_KEY_BY_ID,
   FLOW_C_INDUSTRY_KEY_BY_ID,
@@ -40,6 +39,17 @@ type GoalOption = {
   id: "customer" | "risk" | "proactive" | "trust";
   title: string;
   description: string;
+};
+
+type DetailChecklistItem = {
+  id: string;
+  title: string;
+};
+
+type DetailBlueprint = {
+  summary: string;
+  checklist: DetailChecklistItem[];
+  steps: string[];
 };
 
 type StepDefinition = {
@@ -194,6 +204,80 @@ const STEPS: StepDefinition[] = [
 
 const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
 const HERO_HEADLINE_LINES = ["탄소 규제 대응 비용,", "1분 만에 확인해보세요"];
+const DETAIL_BLUEPRINT_BY_SERVICE: Record<ServiceOption["id"], DetailBlueprint> = {
+  "lca-pcf": {
+    summary: "제품별 탄소데이터 산정 기준과 산정 근거 문서화 수준을 확인합니다.",
+    checklist: [
+      { id: "boundary", title: "제품 경계 정의가 합의되어 있습니다." },
+      { id: "factor", title: "활동데이터와 배출계수 기준이 정리되어 있습니다." },
+      { id: "proof", title: "산정 근거 파일과 검토 이력이 보관되고 있습니다." }
+    ],
+    steps: ["범위 정의", "데이터 매핑", "산정 및 검증", "보고서 패키징"]
+  },
+  ets: {
+    summary: "사업장 단위 배출권거래제 대응 자료와 제출 준비도를 확인합니다.",
+    checklist: [
+      { id: "inventory", title: "사업장 배출원 인벤토리가 최신 상태입니다." },
+      { id: "evidence", title: "활동자료 및 증빙 파일이 월 단위로 정리됩니다." },
+      { id: "submission", title: "대응 일정과 제출 책임자가 지정되어 있습니다." }
+    ],
+    steps: ["배출원 재정의", "자료 수집", "산정/검토", "제출 대응"]
+  },
+  cbam: {
+    summary: "수출 품목 기준으로 CBAM 보고에 필요한 데이터 흐름을 점검합니다.",
+    checklist: [
+      { id: "sku", title: "CBAM 대상 품목이 SKU 단위로 식별됩니다." },
+      { id: "supplier", title: "협력사 데이터 요청 템플릿이 준비되어 있습니다." },
+      { id: "qa", title: "제출 전 품질검토 체크포인트가 정의되어 있습니다." }
+    ],
+    steps: ["대상품목 식별", "공급망 데이터 수집", "보고 포맷 정렬", "검토/제출"]
+  },
+  scope123: {
+    summary: "Scope 1/2/3 범위별 데이터 수집과 연결 수준을 확인합니다.",
+    checklist: [
+      { id: "scope-map", title: "Scope 1/2/3 카테고리 맵이 정의되어 있습니다." },
+      { id: "owner", title: "카테고리별 데이터 오너가 지정되어 있습니다." },
+      { id: "cycle", title: "월/분기 운영 주기로 업데이트가 되고 있습니다." }
+    ],
+    steps: ["카테고리 설계", "오너 지정", "수집 자동화", "정합성 검토"]
+  },
+  "target-management": {
+    summary: "목표관리제 대응을 위한 기준연도/지표/제출 체계 준비도를 확인합니다.",
+    checklist: [
+      { id: "baseline", title: "기준연도와 산정 기준이 명확합니다." },
+      { id: "tracking", title: "감축 실적 추적 방식이 정리되어 있습니다." },
+      { id: "review", title: "내부 리뷰/승인 루틴이 운영되고 있습니다." }
+    ],
+    steps: ["기준 정렬", "지표 설계", "운영 룰 수립", "정기 제출 대응"]
+  },
+  sbti: {
+    summary: "감축 목표 수립과 승인 대응을 위한 준비 수준을 점검합니다.",
+    checklist: [
+      { id: "scenario", title: "감축 시나리오가 복수안으로 준비되어 있습니다." },
+      { id: "boundary", title: "목표 대상 조직/배출경계가 합의되었습니다." },
+      { id: "governance", title: "승인 대응을 위한 의사결정 체계가 정리되어 있습니다." }
+    ],
+    steps: ["기준선 확정", "목표안 설계", "내부 검토", "승인 대응"]
+  },
+  cdp: {
+    summary: "CDP 문항 대응 품질과 증빙 체계의 일관성을 확인합니다.",
+    checklist: [
+      { id: "question-map", title: "문항별 담당자와 데이터 소스가 연결되어 있습니다." },
+      { id: "evidence", title: "핵심 문항 증빙 자료가 최신 상태입니다." },
+      { id: "consistency", title: "공시 문구와 내부 데이터 간 불일치가 관리됩니다." }
+    ],
+    steps: ["문항 매핑", "증빙 보강", "내부 리뷰", "최종 제출"]
+  },
+  "lca-platform": {
+    summary: "LCA SW 도입 시 초기 온보딩과 운영 정착 범위를 진단합니다.",
+    checklist: [
+      { id: "workflow", title: "현재 업무 흐름이 플랫폼 구조로 정의되어 있습니다." },
+      { id: "migration", title: "기존 데이터 이관 우선순위가 정리되어 있습니다." },
+      { id: "training", title: "실무자 온보딩/교육 계획이 준비되어 있습니다." }
+    ],
+    steps: ["요구사항 정의", "환경 세팅", "파일럿 운영", "정식 확산"]
+  }
+};
 
 function formatAmount(amount: number) {
   const eok = Math.floor(amount / 10000);
@@ -212,6 +296,22 @@ function formatAmount(amount: number) {
 
 function formatRange(range: PricingRange) {
   return `${formatAmount(range.min)} ~ ${formatAmount(range.max)}`;
+}
+
+function getChecklistDefaultChecked(maturity: CurrentStateOption["id"] | "", itemIndex: number) {
+  if (maturity === "ready") {
+    return itemIndex < 2;
+  }
+
+  if (maturity === "partial") {
+    return itemIndex === 0;
+  }
+
+  return false;
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function useCountUp(target: number, isActive: boolean, duration = 1600) {
@@ -355,9 +455,15 @@ export default function FlowCExperience() {
   const [selectedScale, setSelectedScale] = useState<ScaleOption["id"] | "">("");
   const [selectedCurrent, setSelectedCurrent] = useState<CurrentStateOption["id"] | "">("");
   const [selectedServices, setSelectedServices] = useState<ServiceOption["id"][]>([]);
-  const [selectedGoal, setSelectedGoal] = useState<GoalOption["id"] | "">("");
+  const [selectedGoals, setSelectedGoals] = useState<GoalOption["id"][]>([]);
   const [openDropdown, setOpenDropdown] = useState<"industry" | "scale" | null>(null);
   const [resultAnimated, setResultAnimated] = useState(false);
+  const [showDetailDiagnosis, setShowDetailDiagnosis] = useState(false);
+  const [expandedServiceId, setExpandedServiceId] = useState<ServiceOption["id"] | null>(null);
+  const [detailChecklistState, setDetailChecklistState] = useState<Record<string, boolean>>({});
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestEmailTouched, setRequestEmailTouched] = useState(false);
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
   const companyStepRef = useRef<HTMLDivElement | null>(null);
   const stepExitTimerRef = useRef<number | null>(null);
   const stepEnterTimerRef = useRef<number | null>(null);
@@ -406,10 +512,10 @@ export default function FlowCExperience() {
         ? Boolean(selectedCurrent)
         : currentStep?.id === "services"
           ? selectedServices.length > 0
-          : Boolean(selectedGoal);
+          : selectedGoals.length > 0;
 
   const estimate = useMemo(() => {
-    if (!selectedIndustry || !selectedScale || !selectedCurrent || !selectedGoal || selectedServices.length === 0) {
+    if (!selectedIndustry || !selectedScale || !selectedCurrent || selectedGoals.length === 0 || selectedServices.length === 0) {
       return null;
     }
 
@@ -436,14 +542,19 @@ export default function FlowCExperience() {
       shortMessages.push(FLOW_C_SHORT_MESSAGES.onboarding);
     }
 
+    const hasRiskGoal = selectedGoals.includes("risk");
+    const hasTrustGoal = selectedGoals.includes("trust");
+    const hasCustomerGoal = selectedGoals.includes("customer");
+    const hasProactiveGoal = selectedGoals.includes("proactive");
+
     const recommendation =
-      selectedGoal === "customer"
-        ? "고객사 대응형 제안"
-        : selectedGoal === "risk" && selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))
-          ? "규제 대응형 제안"
-          : selectedGoal === "trust" && selectedServices.some((serviceId) => ["cdp", "sbti"].includes(serviceId))
-            ? "대외 신뢰 강화형 제안"
-            : selectedGoal === "proactive"
+      hasRiskGoal && selectedServices.some((serviceId) => REGULATORY_SERVICE_IDS.includes(serviceId))
+        ? "규제 대응형 우선 제안"
+        : hasTrustGoal && selectedServices.some((serviceId) => ["cdp", "sbti"].includes(serviceId))
+          ? "대외 신뢰 강화형 제안"
+          : hasCustomerGoal
+            ? "고객사 대응형 제안"
+            : hasProactiveGoal
               ? "선제 대응 체계형 제안"
               : hasPlatform && selectedServices.length >= 3
                 ? "컨설팅 + 플랫폼 결합형 제안"
@@ -458,6 +569,7 @@ export default function FlowCExperience() {
         onboarding: onboardingRange
       },
       recommendation,
+      selectedGoalLabels: GOAL_OPTIONS.filter((goal) => selectedGoals.includes(goal.id)).map((goal) => goal.title),
       shortMessages,
       serviceLabels: serviceRanges.map((service) => service.label),
       serviceBreakdown: serviceRanges.map((service) => ({
@@ -466,7 +578,7 @@ export default function FlowCExperience() {
         range: service.range
       }))
     };
-  }, [selectedCurrent, selectedGoal, selectedIndustry, selectedScale, selectedServices]);
+  }, [selectedCurrent, selectedGoals, selectedIndustry, selectedScale, selectedServices]);
 
   useEffect(() => {
     const shouldAnimate = isComplete && Boolean(estimate);
@@ -482,6 +594,49 @@ export default function FlowCExperience() {
 
   const animatedMin = useCountUp(estimate?.total.min ?? 0, resultAnimated);
   const animatedMax = useCountUp(estimate?.total.max ?? 0, resultAnimated, 1750);
+
+  const detailServices = useMemo(
+    () =>
+      selectedServices
+        .map((serviceId) => {
+          const service = SERVICE_OPTIONS.find((option) => option.id === serviceId);
+          if (!service) {
+            return null;
+          }
+
+          return {
+            id: serviceId,
+            title: service.title,
+            category: service.category,
+            summary: DETAIL_BLUEPRINT_BY_SERVICE[serviceId].summary,
+            checklist: DETAIL_BLUEPRINT_BY_SERVICE[serviceId].checklist,
+            steps: DETAIL_BLUEPRINT_BY_SERVICE[serviceId].steps
+          };
+        })
+        .filter((service): service is NonNullable<typeof service> => Boolean(service)),
+    [selectedServices]
+  );
+  const isRequestEmailValid = isValidEmail(requestEmail.trim());
+
+  useEffect(() => {
+    if (detailServices.length === 0) {
+      setDetailChecklistState({});
+      return;
+    }
+
+    setDetailChecklistState((prev) => {
+      const next: Record<string, boolean> = {};
+
+      detailServices.forEach((service) => {
+        service.checklist.forEach((item, index) => {
+          const key = `${service.id}:${item.id}`;
+          next[key] = key in prev ? prev[key] : getChecklistDefaultChecked(selectedCurrent, index);
+        });
+      });
+
+      return next;
+    });
+  }, [detailServices, selectedCurrent]);
 
   const transitionToStep = (nextIndex: number) => {
     if (isStepTransitioning) {
@@ -544,13 +699,42 @@ export default function FlowCExperience() {
     setSelectedScale("");
     setSelectedCurrent("");
     setSelectedServices([]);
-    setSelectedGoal("");
+    setSelectedGoals([]);
+    setShowDetailDiagnosis(false);
+    setExpandedServiceId(null);
+    setDetailChecklistState({});
+    setRequestEmail("");
+    setRequestEmailTouched(false);
+    setRequestSubmitted(false);
   };
 
   const toggleService = (serviceId: ServiceOption["id"]) => {
     setSelectedServices((prev) =>
       prev.includes(serviceId) ? prev.filter((item) => item !== serviceId) : [...prev, serviceId]
     );
+  };
+
+  const toggleGoal = (goalId: GoalOption["id"]) => {
+    setSelectedGoals((prev) => (prev.includes(goalId) ? prev.filter((item) => item !== goalId) : [...prev, goalId]));
+  };
+
+  const toggleChecklistItem = (serviceId: ServiceOption["id"], itemId: string) => {
+    const key = `${serviceId}:${itemId}`;
+    setDetailChecklistState((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleSubmitRequestEmail = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRequestEmailTouched(true);
+
+    if (!isRequestEmailValid) {
+      return;
+    }
+
+    setRequestSubmitted(true);
   };
 
   if (!started) {
@@ -624,6 +808,161 @@ export default function FlowCExperience() {
     );
   }
 
+  if (isComplete && estimate && showDetailDiagnosis) {
+    return (
+      <main className="min-h-screen bg-[#f5f8ff] px-4 py-5 sm:px-6">
+        <div className="mx-auto max-w-md space-y-4">
+          <div className="mb-1 flex items-center">
+            <button
+              type="button"
+              onClick={() => setShowDetailDiagnosis(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#132750] text-base text-white shadow-[0_10px_24px_rgba(19,39,80,0.24)]"
+              aria-label="예상 도입금액 화면으로 돌아가기"
+            >
+              ←
+            </button>
+          </div>
+
+          <div className="rounded-[2rem] border border-[#d9e6ff] bg-white px-6 pb-6 pt-7 shadow-[0_20px_55px_rgba(31,94,220,0.12)]">
+            <div className="inline-flex items-center rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-semibold text-[#2f63dd]">
+              상세진단
+            </div>
+            <h2 className="mt-4 text-[1.6rem] font-[800] leading-tight tracking-[-0.02em] text-slate-950">
+              선택하신 항목의 진행 범위를
+              <br />
+              한눈에 점검해보세요
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              체크박스를 눌러 현재 준비 상태를 확인하고, 각 항목의 세부 업무 단계를 펼쳐서 범위를 빠르게 볼 수 있습니다.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {detailServices.map((service) => {
+              const checkedCount = service.checklist.filter((item) => detailChecklistState[`${service.id}:${item.id}`]).length;
+              const progress = Math.round((checkedCount / service.checklist.length) * 100);
+              const isExpanded = expandedServiceId === service.id;
+
+              return (
+                <section
+                  key={service.id}
+                  className="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold tracking-[0.16em] text-[#4e7aea]">{service.category}</p>
+                      <h3 className="mt-1 text-base font-semibold text-slate-900">{service.title}</h3>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{progress}%</span>
+                  </div>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{service.summary}</p>
+
+                  <div className="mt-4 space-y-2">
+                    {service.checklist.map((item) => {
+                      const checked = Boolean(detailChecklistState[`${service.id}:${item.id}`]);
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleChecklistItem(service.id, item.id)}
+                          className={`flex w-full items-center gap-3 rounded-[0.95rem] border px-3 py-2.5 text-left text-sm transition-colors ${checked
+                            ? "border-[#cfe0ff] bg-[#f3f7ff] text-[#234dc5]"
+                            : "border-slate-200 bg-slate-50 text-slate-700"
+                            }`}
+                        >
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${checked ? "bg-[#2f63dd] text-white" : "bg-white text-slate-300"
+                              }`}
+                          >
+                            ✓
+                          </span>
+                          <span>{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpandedServiceId((prev) => (prev === service.id ? null : service.id))}
+                    className="mt-4 w-full rounded-[1rem] border border-[#d9e6ff] bg-[#f5f8ff] px-4 py-2.5 text-sm font-semibold text-[#2f63dd]"
+                  >
+                    {isExpanded ? "세부 업무 단계 닫기" : "세부 업무 단계 보기"}
+                  </button>
+
+                  {isExpanded ? (
+                    <div className="mt-3 rounded-[1rem] bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">세부 업무 단계</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {service.steps.map((step, index) => (
+                          <span
+                            key={step}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600"
+                          >
+                            {index + 1}. {step}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
+          </div>
+
+          <div className="space-y-2 pb-2">
+            <form
+              onSubmit={handleSubmitRequestEmail}
+              className="rounded-[1.5rem] border border-[#d9e6ff] bg-white px-4 py-4 shadow-[0_12px_30px_rgba(47,99,221,0.1)]"
+            >
+              <p className="text-sm font-semibold text-slate-900">정확한 견적 요청 받기</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">담당자 메일을 남겨주시면 상세 범위를 기준으로 안내할 수 있습니다.</p>
+              <input
+                type="email"
+                inputMode="email"
+                value={requestEmail}
+                onChange={(event) => {
+                  setRequestEmail(event.target.value);
+                  if (requestSubmitted) {
+                    setRequestSubmitted(false);
+                  }
+                }}
+                onBlur={() => setRequestEmailTouched(true)}
+                placeholder="you@company.com"
+                className={`mt-3 w-full rounded-[0.95rem] border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-colors ${requestEmailTouched && !isRequestEmailValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-slate-200 focus:border-[#7ea3ff]"
+                  }`}
+              />
+              {requestEmailTouched && !isRequestEmailValid ? (
+                <p className="mt-2 text-xs text-red-500">유효한 이메일 형식으로 입력해 주세요.</p>
+              ) : null}
+              {requestSubmitted ? (
+                <p className="mt-2 text-xs text-[#2f63dd]">요청용 메일이 확인되었습니다. 실제 접수 연동 시 바로 활용할 수 있습니다.</p>
+              ) : null}
+              <button
+                type="submit"
+                className="mt-3 w-full rounded-[0.95rem] bg-[#132750] px-3 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!isRequestEmailValid}
+              >
+                상세 견적 요청 등록
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="w-full rounded-[1.2rem] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+            >
+              다시 진단하기
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (isComplete && estimate) {
     const shouldShowBreakdown = estimate.serviceBreakdown.length > 1;
 
@@ -688,16 +1027,22 @@ export default function FlowCExperience() {
                 </span>
               ))}
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {estimate.selectedGoalLabels.map((label) => (
+                <span key={label} className="rounded-full bg-[#e8f0ff] px-3 py-1.5 text-xs font-semibold text-[#2f63dd]">
+                  {label}
+                </span>
+              ))}
+            </div>
 
             <div className="mt-7 space-y-2">
-              <a
-                href={FLOW_C_PAGE.ctaPrimaryHref}
-                target="_blank"
-                rel="noreferrer"
-                className="block w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-center text-sm font-semibold text-white"
+              <button
+                type="button"
+                onClick={() => setShowDetailDiagnosis(true)}
+                className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
               >
-                {FLOW_C_PAGE.ctaPrimary}
-              </a>
+                상세진단 보기
+              </button>
               <button
                 type="button"
                 onClick={handleRestart}
@@ -832,16 +1177,19 @@ export default function FlowCExperience() {
             ) : null}
 
             {currentStep.id === "goal" ? (
-              <div className="mt-10 space-y-4">
+              <div className="mt-10">
+                <div className="mb-4 rounded-full bg-slate-100 px-4 py-2 text-center text-xs font-semibold text-slate-600">
+                  복수 선택 가능
+                </div>
                 {GOAL_OPTIONS.map((option) => {
-                  const isSelected = option.id === selectedGoal;
+                  const isSelected = selectedGoals.includes(option.id);
 
                   return (
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => setSelectedGoal(option.id)}
-                      className={`w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
+                      onClick={() => toggleGoal(option.id)}
+                      className={`mb-3 w-full rounded-[1.35rem] px-5 py-5 text-left transition-all ${isSelected
                         ? "bg-[#132750] text-white shadow-[0_16px_40px_rgba(19,39,80,0.24)]"
                         : "border border-slate-200 bg-white text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
                         }`}
