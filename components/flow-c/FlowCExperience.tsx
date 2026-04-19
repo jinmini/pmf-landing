@@ -205,6 +205,28 @@ const STEPS: StepDefinition[] = [
 
 const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
 const HERO_HEADLINE_LINES = ["탄소 규제 대응 비용,", "1분 만에 확인해보세요"];
+const FLOW_C_SESSION_STORAGE_KEY = "flow-c-session-v1";
+const INDUSTRY_ID_SET = new Set(INDUSTRIES.map((item) => item.id));
+const SCALE_ID_SET = new Set(COMPANY_SCALES.map((item) => item.id));
+const CURRENT_STATE_ID_SET = new Set(CURRENT_STATES.map((item) => item.id));
+const SERVICE_ID_SET = new Set(SERVICE_OPTIONS.map((item) => item.id));
+const GOAL_ID_SET = new Set(GOAL_OPTIONS.map((item) => item.id));
+
+type FlowCSessionSnapshot = {
+  version: 1;
+  started: boolean;
+  stepIndex: number;
+  selectedIndustry: IndustryOption["id"] | "";
+  selectedScale: ScaleOption["id"] | "";
+  selectedCurrent: CurrentStateOption["id"] | "";
+  selectedServices: ServiceOption["id"][];
+  selectedGoals: GoalOption["id"][];
+  showDetailDiagnosis: boolean;
+  expandedServiceId: ServiceOption["id"] | null;
+  detailChecklistState: Record<string, boolean>;
+  savedAt: string;
+};
+
 const DETAIL_BLUEPRINT_BY_SERVICE: Record<ServiceOption["id"], DetailBlueprint> = {
   "lca-pcf": {
     summary: "제품별 탄소데이터 산정 기준과 산정 근거 문서화 수준을 확인합니다.",
@@ -458,7 +480,9 @@ export default function FlowCExperience() {
   const [selectedServices, setSelectedServices] = useState<ServiceOption["id"][]>([]);
   const [selectedGoals, setSelectedGoals] = useState<GoalOption["id"][]>([]);
   const [openDropdown, setOpenDropdown] = useState<"industry" | "scale" | null>(null);
+  const [resultFlowPhase, setResultFlowPhase] = useState<"idle" | "analyzing" | "complete" | "result">("idle");
   const [resultAnimated, setResultAnimated] = useState(false);
+  const [resultViewReady, setResultViewReady] = useState(true);
   const [showDetailDiagnosis, setShowDetailDiagnosis] = useState(false);
   const [expandedServiceId, setExpandedServiceId] = useState<ServiceOption["id"] | null>(null);
   const [detailChecklistState, setDetailChecklistState] = useState<Record<string, boolean>>({});
@@ -469,6 +493,10 @@ export default function FlowCExperience() {
   const companyStepRef = useRef<HTMLDivElement | null>(null);
   const stepExitTimerRef = useRef<number | null>(null);
   const stepEnterTimerRef = useRef<number | null>(null);
+  const resultAnalyzeTimerRef = useRef<number | null>(null);
+  const resultCompleteTimerRef = useRef<number | null>(null);
+  const resultRevealFrameRef = useRef<number | null>(null);
+  const sessionHydratedRef = useRef(false);
 
   const currentStep = STEPS[displayStepIndex];
   const isComplete = stepIndex >= STEPS.length;
@@ -504,7 +532,101 @@ export default function FlowCExperience() {
       if (stepEnterTimerRef.current !== null) {
         window.clearTimeout(stepEnterTimerRef.current);
       }
+      if (resultAnalyzeTimerRef.current !== null) {
+        window.clearTimeout(resultAnalyzeTimerRef.current);
+      }
+      if (resultCompleteTimerRef.current !== null) {
+        window.clearTimeout(resultCompleteTimerRef.current);
+      }
+      if (resultRevealFrameRef.current !== null) {
+        window.cancelAnimationFrame(resultRevealFrameRef.current);
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(FLOW_C_SESSION_STORAGE_KEY);
+      if (!raw) {
+        sessionHydratedRef.current = true;
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as Partial<FlowCSessionSnapshot>;
+      if (parsed.version !== 1 || !parsed.started) {
+        sessionHydratedRef.current = true;
+        return;
+      }
+
+      const restoredServices = Array.isArray(parsed.selectedServices)
+        ? Array.from(
+          new Set(
+            parsed.selectedServices.filter(
+              (item): item is ServiceOption["id"] => typeof item === "string" && SERVICE_ID_SET.has(item as ServiceOption["id"])
+            )
+          )
+        )
+        : [];
+
+      const restoredGoals = Array.isArray(parsed.selectedGoals)
+        ? Array.from(
+          new Set(
+            parsed.selectedGoals.filter(
+              (item): item is GoalOption["id"] => typeof item === "string" && GOAL_ID_SET.has(item as GoalOption["id"])
+            )
+          )
+        )
+        : [];
+
+      const restoredStepIndex = Number.isInteger(parsed.stepIndex) && Number(parsed.stepIndex) >= 0
+        ? Number(parsed.stepIndex)
+        : 0;
+
+      const normalizedStepIndex = Math.min(restoredStepIndex, STEPS.length);
+
+      setStarted(true);
+      setStepIndex(normalizedStepIndex);
+      setDisplayStepIndex(Math.min(normalizedStepIndex, STEPS.length - 1));
+      setStepTransitionPhase("idle");
+      setResultFlowPhase("idle");
+      setSelectedIndustry(
+        typeof parsed.selectedIndustry === "string" && INDUSTRY_ID_SET.has(parsed.selectedIndustry as IndustryOption["id"])
+          ? (parsed.selectedIndustry as IndustryOption["id"])
+          : ""
+      );
+      setSelectedScale(
+        typeof parsed.selectedScale === "string" && SCALE_ID_SET.has(parsed.selectedScale as ScaleOption["id"])
+          ? (parsed.selectedScale as ScaleOption["id"])
+          : ""
+      );
+      setSelectedCurrent(
+        typeof parsed.selectedCurrent === "string" && CURRENT_STATE_ID_SET.has(parsed.selectedCurrent as CurrentStateOption["id"])
+          ? (parsed.selectedCurrent as CurrentStateOption["id"])
+          : ""
+      );
+      setSelectedServices(restoredServices);
+      setSelectedGoals(restoredGoals);
+      setShowDetailDiagnosis(Boolean(parsed.showDetailDiagnosis) && normalizedStepIndex >= STEPS.length);
+      setExpandedServiceId(
+        typeof parsed.expandedServiceId === "string" && restoredServices.includes(parsed.expandedServiceId as ServiceOption["id"])
+          ? (parsed.expandedServiceId as ServiceOption["id"])
+          : null
+      );
+
+      const restoredChecklistState =
+        parsed.detailChecklistState && typeof parsed.detailChecklistState === "object"
+          ? Object.fromEntries(
+            Object.entries(parsed.detailChecklistState).filter(
+              ([key, value]) => typeof key === "string" && typeof value === "boolean"
+            )
+          )
+          : {};
+      setDetailChecklistState(restoredChecklistState);
+    } catch {
+      window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
+    } finally {
+      sessionHydratedRef.current = true;
+    }
   }, []);
 
   const isStepValid =
@@ -583,7 +705,21 @@ export default function FlowCExperience() {
   }, [selectedCurrent, selectedGoals, selectedIndustry, selectedScale, selectedServices]);
 
   useEffect(() => {
-    const shouldAnimate = isComplete && Boolean(estimate);
+    if (resultFlowPhase === "result") {
+      setResultViewReady(false);
+      resultRevealFrameRef.current = window.requestAnimationFrame(() => {
+        setResultViewReady(true);
+      });
+      return;
+    }
+
+    if (resultFlowPhase === "idle") {
+      setResultViewReady(true);
+    }
+  }, [resultFlowPhase]);
+
+  useEffect(() => {
+    const shouldAnimate = isComplete && Boolean(estimate) && (resultFlowPhase === "result" || resultFlowPhase === "idle");
     setResultAnimated(shouldAnimate);
 
     if (!shouldAnimate) {
@@ -592,7 +728,7 @@ export default function FlowCExperience() {
 
     const timeoutId = window.setTimeout(() => setResultAnimated(false), 340);
     return () => window.clearTimeout(timeoutId);
-  }, [estimate, isComplete]);
+  }, [estimate, isComplete, resultFlowPhase]);
 
   const animatedMin = useCountUp(estimate?.total.min ?? 0, resultAnimated);
   const animatedMax = useCountUp(estimate?.total.max ?? 0, resultAnimated, 1750);
@@ -670,8 +806,43 @@ export default function FlowCExperience() {
     }, 180);
   };
 
+  const startResultFlow = () => {
+    if (isStepTransitioning || resultFlowPhase !== "idle") {
+      return;
+    }
+
+    if (stepExitTimerRef.current !== null) {
+      window.clearTimeout(stepExitTimerRef.current);
+    }
+    if (resultAnalyzeTimerRef.current !== null) {
+      window.clearTimeout(resultAnalyzeTimerRef.current);
+    }
+    if (resultCompleteTimerRef.current !== null) {
+      window.clearTimeout(resultCompleteTimerRef.current);
+    }
+
+    setStepTransitionPhase("exit");
+    stepExitTimerRef.current = window.setTimeout(() => {
+      setStepIndex(STEPS.length);
+      setStepTransitionPhase("idle");
+      setResultFlowPhase("analyzing");
+
+      resultAnalyzeTimerRef.current = window.setTimeout(() => {
+        setResultFlowPhase("complete");
+        resultCompleteTimerRef.current = window.setTimeout(() => {
+          setResultFlowPhase("result");
+        }, 650);
+      }, 3000);
+    }, 180);
+  };
+
   const handleNext = () => {
     if (!isStepValid || isStepTransitioning) {
+      return;
+    }
+
+    if (displayStepIndex === STEPS.length - 1) {
+      startResultFlow();
       return;
     }
 
@@ -693,10 +864,17 @@ export default function FlowCExperience() {
     if (stepEnterTimerRef.current !== null) {
       window.clearTimeout(stepEnterTimerRef.current);
     }
+    if (resultAnalyzeTimerRef.current !== null) {
+      window.clearTimeout(resultAnalyzeTimerRef.current);
+    }
+    if (resultCompleteTimerRef.current !== null) {
+      window.clearTimeout(resultCompleteTimerRef.current);
+    }
     setStarted(false);
     setStepIndex(0);
     setDisplayStepIndex(0);
     setStepTransitionPhase("idle");
+    setResultFlowPhase("idle");
     setSelectedIndustry("");
     setSelectedScale("");
     setSelectedCurrent("");
@@ -709,7 +887,47 @@ export default function FlowCExperience() {
     setRequestEmailTouched(false);
     setRequestSubmitState("idle");
     setRequestSubmitError("");
+    window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
   };
+
+  useEffect(() => {
+    if (!sessionHydratedRef.current) {
+      return;
+    }
+
+    if (!started) {
+      window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
+      return;
+    }
+
+    const snapshot: FlowCSessionSnapshot = {
+      version: 1,
+      started,
+      stepIndex,
+      selectedIndustry,
+      selectedScale,
+      selectedCurrent,
+      selectedServices,
+      selectedGoals,
+      showDetailDiagnosis,
+      expandedServiceId,
+      detailChecklistState,
+      savedAt: new Date().toISOString()
+    };
+
+    window.sessionStorage.setItem(FLOW_C_SESSION_STORAGE_KEY, JSON.stringify(snapshot));
+  }, [
+    started,
+    stepIndex,
+    selectedIndustry,
+    selectedScale,
+    selectedCurrent,
+    selectedServices,
+    selectedGoals,
+    showDetailDiagnosis,
+    expandedServiceId,
+    detailChecklistState
+  ]);
 
   const toggleService = (serviceId: ServiceOption["id"]) => {
     setSelectedServices((prev) =>
@@ -1021,13 +1239,31 @@ export default function FlowCExperience() {
                 {requestSubmitState === "submitting" ? "등록 중..." : requestSubmitState === "success" ? "요청 접수 완료" : "상세 견적 요청 등록"}
               </button>
             </form>
-            <button
-              type="button"
-              onClick={handleRestart}
-              className="w-full rounded-[1.2rem] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
-            >
-              다시 진단하기
-            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isComplete && estimate && (resultFlowPhase === "analyzing" || resultFlowPhase === "complete")) {
+    const isAnalyzing = resultFlowPhase === "analyzing";
+
+    return (
+      <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
+        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-md items-center justify-center">
+          <div className="w-full py-12 text-center">
+            {isAnalyzing ? (
+              <div className="mx-auto h-11 w-11 rounded-full border-[4px] border-[#d4e2ff] border-t-[#1f5edc] animate-spin" />
+            ) : (
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#e8f0ff]">
+                <svg viewBox="0 0 20 20" fill="none" className="h-6 w-6 text-[#1f5edc]" aria-hidden="true">
+                  <path d="M4.5 10.5l3.5 3.5 7-7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            )}
+            <p className="mt-5 text-[1.15rem] font-semibold text-[#1f5edc]">
+              {isAnalyzing ? "결과 분석중" : "완료"}
+            </p>
           </div>
         </div>
       </main>
@@ -1038,7 +1274,7 @@ export default function FlowCExperience() {
     const shouldShowBreakdown = estimate.serviceBreakdown.length > 1;
 
     return (
-      <main className="min-h-screen bg-[#f8fafc] px-4 py-5 sm:px-6">
+      <main className={`min-h-screen bg-[#f8fafc] px-4 py-5 transition-opacity duration-500 ease-out sm:px-6 ${resultViewReady ? "opacity-100" : "opacity-0"}`}>
         <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
           <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#f8fafc_100%)] px-6 pb-8 pt-6">
             <p className="mt-8 text-sm font-semibold text-slate-500">예상 도입 금액 범위</p>

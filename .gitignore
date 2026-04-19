@@ -13,8 +13,10 @@ pnpm-debug.log*
 
 # env
 .env*
+!.env.example
 
 # misc
 .DS_Store
 *.pem
 coverage
+
