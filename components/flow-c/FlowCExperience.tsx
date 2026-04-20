@@ -1458,7 +1458,7 @@ export default function FlowCExperience() {
             <button
               type="button"
               onClick={handleRestart}
-              className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
+              className="w-full rounded-[1.25rem] bg-[linear-gradient(135deg,#2f6de9_0%,#1f5edc_45%,#1a4fbe_100%)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_40px_rgba(47,109,233,0.34)] transition-transform hover:-translate-y-0.5"
             >
               진단 종료하기
             </button>
