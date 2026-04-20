@@ -9,6 +9,7 @@ Copy `.env.example` to `.env.local` and fill the values:
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `ESTIMATE_REQUEST_NOTIFICATION_TO` (comma-separated emails)
+- `NEXT_PUBLIC_SITE_URL` (`https://carbonhero.kr`)
 - `NEXT_PUBLIC_GA_MEASUREMENT_ID` (optional, GA4 tracking)
 
 ## 2) Supabase tables

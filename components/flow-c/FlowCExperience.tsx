@@ -1222,7 +1222,7 @@ export default function FlowCExperience() {
               <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 대응 비용 진단</p>
               <h1
                 aria-label={HERO_HEADLINE_LINES.join(" ")}
-                className="mt-4 text-[2.06rem] font-[800] leading-[1.24] tracking-[-0.02em] text-slate-950 sm:text-[2.2rem]"
+                className="fluid-title-hero text-balance-pretty measure-tight mt-4 font-[800] text-slate-950"
               >
                 {HERO_HEADLINE_LINES.map((line, lineIndex) => (
                   <span key={line} aria-hidden="true" className="block">
@@ -1308,12 +1308,10 @@ export default function FlowCExperience() {
             <div className="inline-flex items-center rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-semibold text-[#2f63dd]">
               상세 옵션
             </div>
-            <h2 className="mt-4 text-[1.6rem] font-[800] leading-tight tracking-[-0.02em] text-slate-950">
-              선택하신 항목의 필요 범위를
-              <br />
-              선택해 주세요
+            <h2 className="fluid-title-section text-balance-pretty measure-tight mt-4 font-[800] text-slate-950">
+              선택하신 항목의 필요 범위를 선택해 주세요
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <p className="measure-copy mt-3 text-sm leading-6 text-slate-600">
               체크박스를 눌러 현재 준비 상태를 알려주시면, 조금 더 자세한 예산 범위를 안내드립니다
             </p>
           </div>
@@ -1462,7 +1460,7 @@ export default function FlowCExperience() {
             <p className="mt-8 text-sm font-semibold text-slate-500">예상 도입 금액 범위</p>
             <div className="mt-4 px-1">
               <p
-                className={`inline-flex max-w-full items-end gap-1 whitespace-nowrap text-[clamp(0.86rem,4.6vw,1.95rem)] font-[800] leading-none tracking-[-0.05em] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
+                className={`fluid-amount inline-flex max-w-full flex-wrap items-end gap-1 font-[800] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out sm:flex-nowrap ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
               >
                 <span>{formatAmount(animatedMin)}</span>
                 <span className="pb-[0.08rem] text-[0.95em] font-semibold text-slate-950">~</span>
@@ -1584,7 +1582,7 @@ export default function FlowCExperience() {
         <div className={`flex flex-1 flex-col transition-all duration-200 ease-out ${stepTransitionClass} ${isStepTransitioning ? "pointer-events-none" : ""}`}>
           <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
             <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
-            <h1 className="mt-4 text-center text-[1.9rem] font-semibold tracking-tight text-slate-950">{currentStep.title}</h1>
+            <h1 className="fluid-title-step text-balance-pretty measure-tight mx-auto mt-4 text-center font-semibold text-slate-950">{currentStep.title}</h1>
 
             {currentStep.id === "company" ? (
               <div ref={companyStepRef} className="mt-10 space-y-4">

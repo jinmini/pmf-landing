@@ -10,6 +10,7 @@ Flow C 실제 사용자 흐름을 릴리즈 기준으로 점검하기 위한 체
   - [ ] `RESEND_API_KEY`
   - [ ] `RESEND_FROM_EMAIL`
   - [ ] `ESTIMATE_REQUEST_NOTIFICATION_TO`
+  - [ ] `NEXT_PUBLIC_SITE_URL` = `https://carbonhero.kr`
 - [ ] Supabase SQL Editor에서 `docs/supabase/estimate_requests.sql`을 실행했다.
 - [ ] 알림 메일 수신 주소(`ESTIMATE_REQUEST_NOTIFICATION_TO`)를 팀 메일로 지정했다.
 
@@ -60,4 +61,3 @@ Flow C 실제 사용자 흐름을 릴리즈 기준으로 점검하기 위한 체
 ```
 [YYYY-MM-DD HH:mm] 항목: 2-3, 결과: PASS, 메모: 실제 수신 메일 확인
 ```
-
