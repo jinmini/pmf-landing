@@ -354,6 +354,19 @@ function createClientSessionId() {
   return `flow-c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function detectIosSafari() {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const ua = navigator.userAgent;
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const isWebkit = /WebKit/i.test(ua);
+  const isOtherBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser/i.test(ua);
+
+  return isIos && isWebkit && !isOtherBrowser;
+}
+
 function useCountUp(target: number, isActive: boolean, duration = 1600) {
   const [value, setValue] = useState(isActive ? 0 : target);
 
@@ -509,6 +522,7 @@ export default function FlowCExperience() {
   const [requestEmailTouched, setRequestEmailTouched] = useState(false);
   const [requestSubmitState, setRequestSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [requestSubmitError, setRequestSubmitError] = useState("");
+  const [isIosSafari, setIsIosSafari] = useState(false);
   const companyStepRef = useRef<HTMLDivElement | null>(null);
   const stepExitTimerRef = useRef<number | null>(null);
   const stepEnterTimerRef = useRef<number | null>(null);
@@ -535,6 +549,10 @@ export default function FlowCExperience() {
   useEffect(() => {
     setOpenDropdown(null);
   }, [displayStepIndex]);
+
+  useEffect(() => {
+    setIsIosSafari(detectIosSafari());
+  }, []);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -1218,29 +1236,35 @@ export default function FlowCExperience() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,#eef4ff_0%,#f8fbff_38%,#ffffff_78%)] px-5 py-8 sm:px-6">
         <div className="mx-auto flex max-w-md flex-col gap-7">
           <div>
-            <div className="rounded-[2rem] border border-white/60 bg-white/70 px-6 py-7 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur">
+            <div className="rounded-[2rem] border border-white/60 bg-white/70 px-6 py-7 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
               <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 대응 비용 진단</p>
               <h1
                 aria-label={HERO_HEADLINE_LINES.join(" ")}
                 className="fluid-title-hero text-balance-pretty measure-tight mt-4 font-[800] text-slate-950"
               >
-                {HERO_HEADLINE_LINES.map((line, lineIndex) => (
-                  <span key={line} aria-hidden="true" className="block">
-                    {line.split("").map((char, charIndex) => {
-                      const delay = (lineIndex * 10 + charIndex) * 36;
+                {isIosSafari
+                  ? HERO_HEADLINE_LINES.map((line) => (
+                    <span key={line} aria-hidden="true" className="block">
+                      {line}
+                    </span>
+                  ))
+                  : HERO_HEADLINE_LINES.map((line, lineIndex) => (
+                    <span key={line} aria-hidden="true" className="block">
+                      {line.split("").map((char, charIndex) => {
+                        const delay = (lineIndex * 10 + charIndex) * 36;
 
-                      return (
-                        <span
-                          key={`${lineIndex}-${charIndex}-${char}`}
-                          className="flow-c-hero-char inline-block"
-                          style={{ animationDelay: `${delay}ms` }}
-                        >
-                          {char === " " ? "\u00A0" : char}
-                        </span>
-                      );
-                    })}
-                  </span>
-                ))}
+                        return (
+                          <span
+                            key={`${lineIndex}-${charIndex}-${char}`}
+                            className="flow-c-hero-char inline-block"
+                            style={{ animationDelay: `${delay}ms` }}
+                          >
+                            {char === " " ? "\u00A0" : char}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  ))}
               </h1>
             </div>
 
