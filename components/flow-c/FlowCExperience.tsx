@@ -367,6 +367,33 @@ function detectIosSafari() {
   return isIos && isWebkit && !isOtherBrowser;
 }
 
+function safeStorageGet(storage: "local" | "session", key: string) {
+  try {
+    const target = storage === "local" ? window.localStorage : window.sessionStorage;
+    return target.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(storage: "local" | "session", key: string, value: string) {
+  try {
+    const target = storage === "local" ? window.localStorage : window.sessionStorage;
+    target.setItem(key, value);
+  } catch {
+    // Safari private mode or strict tracking protection can reject storage access.
+  }
+}
+
+function safeStorageRemove(storage: "local" | "session", key: string) {
+  try {
+    const target = storage === "local" ? window.localStorage : window.sessionStorage;
+    target.removeItem(key);
+  } catch {
+    // No-op by design.
+  }
+}
+
 function useCountUp(target: number, isActive: boolean, duration = 1600) {
   const [value, setValue] = useState(isActive ? 0 : target);
 
@@ -522,7 +549,7 @@ export default function FlowCExperience() {
   const [requestEmailTouched, setRequestEmailTouched] = useState(false);
   const [requestSubmitState, setRequestSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [requestSubmitError, setRequestSubmitError] = useState("");
-  const [isIosSafari, setIsIosSafari] = useState(false);
+  const [isIosSafari] = useState(() => detectIosSafari());
   const companyStepRef = useRef<HTMLDivElement | null>(null);
   const stepExitTimerRef = useRef<number | null>(null);
   const stepEnterTimerRef = useRef<number | null>(null);
@@ -549,10 +576,6 @@ export default function FlowCExperience() {
   useEffect(() => {
     setOpenDropdown(null);
   }, [displayStepIndex]);
-
-  useEffect(() => {
-    setIsIosSafari(detectIosSafari());
-  }, []);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -589,16 +612,16 @@ export default function FlowCExperience() {
   }, []);
 
   useEffect(() => {
-    const storedSessionId = window.localStorage.getItem(FLOW_C_CLIENT_SESSION_STORAGE_KEY);
+    const storedSessionId = safeStorageGet("local", FLOW_C_CLIENT_SESSION_STORAGE_KEY);
     if (storedSessionId) {
       setClientSessionId(storedSessionId);
     } else {
       const nextSessionId = createClientSessionId();
-      window.localStorage.setItem(FLOW_C_CLIENT_SESSION_STORAGE_KEY, nextSessionId);
+      safeStorageSet("local", FLOW_C_CLIENT_SESSION_STORAGE_KEY, nextSessionId);
       setClientSessionId(nextSessionId);
     }
 
-    const storedDraftId = window.localStorage.getItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
+    const storedDraftId = safeStorageGet("local", FLOW_C_DRAFT_ID_STORAGE_KEY);
     if (storedDraftId) {
       setDraftId(storedDraftId);
     }
@@ -606,7 +629,7 @@ export default function FlowCExperience() {
 
   useEffect(() => {
     try {
-      const raw = window.sessionStorage.getItem(FLOW_C_SESSION_STORAGE_KEY);
+      const raw = safeStorageGet("session", FLOW_C_SESSION_STORAGE_KEY);
       if (!raw) {
         sessionHydratedRef.current = true;
         return;
@@ -683,7 +706,7 @@ export default function FlowCExperience() {
           : {};
       setDetailChecklistState(restoredChecklistState);
     } catch {
-      window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
+      safeStorageRemove("session", FLOW_C_SESSION_STORAGE_KEY);
     } finally {
       sessionHydratedRef.current = true;
     }
@@ -898,7 +921,7 @@ export default function FlowCExperience() {
       }
 
       setDraftId(result.draftId);
-      window.localStorage.setItem(FLOW_C_DRAFT_ID_STORAGE_KEY, result.draftId);
+      safeStorageSet("local", FLOW_C_DRAFT_ID_STORAGE_KEY, result.draftId);
       trackEvent("flow_c_draft_saved", {
         flow_id: "flow_c",
         latest_step: latestStep,
@@ -1082,8 +1105,8 @@ export default function FlowCExperience() {
     setRequestSubmitError("");
     resultViewTrackedRef.current = false;
     detailViewTrackedRef.current = false;
-    window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
-    window.localStorage.removeItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
+    safeStorageRemove("session", FLOW_C_SESSION_STORAGE_KEY);
+    safeStorageRemove("local", FLOW_C_DRAFT_ID_STORAGE_KEY);
   };
 
   useEffect(() => {
@@ -1092,7 +1115,7 @@ export default function FlowCExperience() {
     }
 
     if (!started) {
-      window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
+      safeStorageRemove("session", FLOW_C_SESSION_STORAGE_KEY);
       return;
     }
 
@@ -1111,7 +1134,7 @@ export default function FlowCExperience() {
       savedAt: new Date().toISOString()
     };
 
-    window.sessionStorage.setItem(FLOW_C_SESSION_STORAGE_KEY, JSON.stringify(snapshot));
+    safeStorageSet("session", FLOW_C_SESSION_STORAGE_KEY, JSON.stringify(snapshot));
   }, [
     started,
     stepIndex,
@@ -1213,7 +1236,7 @@ export default function FlowCExperience() {
         mail_status: result.mailStatus
       });
       setDraftId(null);
-      window.localStorage.removeItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
+      safeStorageRemove("local", FLOW_C_DRAFT_ID_STORAGE_KEY);
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 전송 중 오류가 발생했습니다.";
       setRequestSubmitState("error");
