@@ -1,7 +1,13 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EstimateRequestApiResponse, EstimateRequestPayload } from "@/types/estimateRequest";
+import type {
+  EstimateDraftApiResponse,
+  EstimateDraftPayload,
+  EstimateRequestApiResponse,
+  EstimateRequestPayload
+} from "@/types/estimateRequest";
+import { trackEvent } from "@/lib/analytics/ga";
 import {
   FLOW_C_COMPANY_SIZE_KEY_BY_ID,
   FLOW_C_INDUSTRY_KEY_BY_ID,
@@ -91,18 +97,18 @@ const COMPANY_SCALES: ScaleOption[] = [
 const CURRENT_STATES: CurrentStateOption[] = [
   {
     id: "manual",
-    title: "대부분 수작업",
-    description: "엑셀, 메일, 개별 자료 취합 중심으로 운영 중입니다."
+    title: "전담인력 없이 수작업 대응",
+    description: "건 마다 매번 다른 담당자가 엑셀, 메일 등으로 자료를 취합합니다."
   },
   {
     id: "partial",
-    title: "부분 시스템은 있으나 연결이 약함",
-    description: "일부 체계는 있으나 데이터 연결과 운영 일관성이 부족합니다."
+    title: "전담인력은 있으나 수작업 대응",
+    description: "전담 또는 실무 담당자가 있지만, 데이터 취합·산정·보고는 주로 수작업으로 합니다."
   },
   {
     id: "ready",
-    title: "기본 체계는 있고 고도화 필요",
-    description: "기본 운영 체계는 있으나 범위 확장과 정합성 보완이 필요한 상태입니다."
+    title: "SW를 도입해 운영 중",
+    description: "탄소 데이터 관리·산정·보고 업무를 시스템으로 운영하고 있습니다."
   }
 ];
 
@@ -111,7 +117,7 @@ const SERVICE_OPTIONS: ServiceOption[] = [
     id: "lca-pcf",
     title: "LCA · PCF",
     category: "Consulting",
-    description: "제품 단위 탄소데이터 산정과 기본 산정 체계 정립"
+    description: "제품별 탄소 데이터를 산정하고 재사용 가능한 계산 체계 확보"
   },
   {
     id: "ets",
@@ -123,13 +129,13 @@ const SERVICE_OPTIONS: ServiceOption[] = [
     id: "cbam",
     title: "CBAM",
     category: "Regulation",
-    description: "수출 규제 대응을 위한 초기 진단과 제출 준비"
+    description: "CBAM 요건에 맞는 데이터 구조를 파악하고 제출 체계 구축"
   },
   {
     id: "scope123",
     title: "Scope 1/2/3",
     category: "Inventory",
-    description: "배출량 인벤토리 구조화와 간접배출 범위 확장"
+    description: "배출량 인벤토리를 구조화하고 확장 가능한 데이터 관리 기반 확보"
   },
   {
     id: "target-management",
@@ -153,7 +159,7 @@ const SERVICE_OPTIONS: ServiceOption[] = [
     id: "lca-platform",
     title: "LCA SW(전과정평가 시스템)",
     category: "Platform",
-    description: "반복 운영을 위한 플랫폼 세팅과 온보딩 범위"
+    description: "LCA 반복 산정을 위한 플랫폼 세팅과 운영 온보딩 범위 확보"
   }
 ];
 
@@ -189,7 +195,7 @@ const STEPS: StepDefinition[] = [
   {
     id: "current",
     kicker: "Step 2",
-    title: "현재 대응 수준은 어느 정도인가요?"
+    title: "현재 탄소 대응 업무는 어떻게 운영하고 계신가요?"
   },
   {
     id: "services",
@@ -204,8 +210,10 @@ const STEPS: StepDefinition[] = [
 ];
 
 const REGULATORY_SERVICE_IDS: Array<ServiceOption["id"]> = ["ets", "cbam", "target-management", "cdp"];
-const HERO_HEADLINE_LINES = ["탄소 규제 대응 비용,", "1분 만에 확인해보세요"];
+const HERO_HEADLINE_LINES = ["탄소 대응 예상 비용,", "1분 만에 확인해보세요"];
 const FLOW_C_SESSION_STORAGE_KEY = "flow-c-session-v1";
+const FLOW_C_DRAFT_ID_STORAGE_KEY = "flow-c-draft-id-v1";
+const FLOW_C_CLIENT_SESSION_STORAGE_KEY = "flow-c-client-session-id-v1";
 const INDUSTRY_ID_SET = new Set(INDUSTRIES.map((item) => item.id));
 const SCALE_ID_SET = new Set(COMPANY_SCALES.map((item) => item.id));
 const CURRENT_STATE_ID_SET = new Set(CURRENT_STATES.map((item) => item.id));
@@ -231,72 +239,72 @@ const DETAIL_BLUEPRINT_BY_SERVICE: Record<ServiceOption["id"], DetailBlueprint> 
   "lca-pcf": {
     summary: "제품별 탄소데이터 산정 기준과 산정 근거 문서화 수준을 확인합니다.",
     checklist: [
-      { id: "boundary", title: "제품 경계 정의가 합의되어 있습니다." },
-      { id: "factor", title: "활동데이터와 배출계수 기준이 정리되어 있습니다." },
-      { id: "proof", title: "산정 근거 파일과 검토 이력이 보관되고 있습니다." }
+      { id: "boundary", title: "복수 제품(군) 대상 산정이 필요합니다." },
+      { id: "factor", title: "제출용 LCA·PCF 결과 보고서가 필요합니다." },
+      { id: "proof", title: "내부에서 산정 · 운영을 위한 Excel Tool이 필요합니다." }
     ],
     steps: ["범위 정의", "데이터 매핑", "산정 및 검증", "보고서 패키징"]
   },
   ets: {
     summary: "사업장 단위 배출권거래제 대응 자료와 제출 준비도를 확인합니다.",
     checklist: [
-      { id: "inventory", title: "사업장 배출원 인벤토리가 최신 상태입니다." },
-      { id: "evidence", title: "활동자료 및 증빙 파일이 월 단위로 정리됩니다." },
-      { id: "submission", title: "대응 일정과 제출 책임자가 지정되어 있습니다." }
+      { id: "inventory", title: "복수 사업장에 대한 대응이 필요합니다." },
+      { id: "evidence", title: "배출권거래제 제출용 명세서·보고 대응이 필요합니다." },
+      { id: "submission", title: "제 3자 검증 대행까지 필요합니다." }
     ],
     steps: ["배출원 재정의", "자료 수집", "산정/검토", "제출 대응"]
   },
   cbam: {
     summary: "수출 품목 기준으로 CBAM 보고에 필요한 데이터 흐름을 점검합니다.",
     checklist: [
-      { id: "sku", title: "CBAM 대상 품목이 SKU 단위로 식별됩니다." },
-      { id: "supplier", title: "협력사 데이터 요청 템플릿이 준비되어 있습니다." },
-      { id: "qa", title: "제출 전 품질검토 체크포인트가 정의되어 있습니다." }
+      { id: "sku", title: "여러 수출 품목에 대해 대응이 필요합니다." },
+      { id: "supplier", title: "CBAM 제출용 산정·보고 대응이 필요합니다." },
+      { id: "qa", title: "내부 운영을 위한 배출량 산정 체계(Excel)가 필요합니다." }
     ],
     steps: ["대상품목 식별", "공급망 데이터 수집", "보고 포맷 정렬", "검토/제출"]
   },
   scope123: {
     summary: "Scope 1/2/3 범위별 데이터 수집과 연결 수준을 확인합니다.",
     checklist: [
-      { id: "scope-map", title: "Scope 1/2/3 카테고리 맵이 정의되어 있습니다." },
-      { id: "owner", title: "카테고리별 데이터 오너가 지정되어 있습니다." },
-      { id: "cycle", title: "월/분기 운영 주기로 업데이트가 되고 있습니다." }
+      { id: "scope-map", title: "기초 Scope 1·2 인벤토리 구축이 필요합니다." },
+      { id: "owner", title: "공급망까지 포함한 Scope 3 산정이 필요합니다." },
+      { id: "cycle", title: "대외 활용을 위한 자발적 검증이 필요합니다." }
     ],
     steps: ["카테고리 설계", "오너 지정", "수집 자동화", "정합성 검토"]
   },
   "target-management": {
     summary: "목표관리제 대응을 위한 기준연도/지표/제출 체계 준비도를 확인합니다.",
     checklist: [
-      { id: "baseline", title: "기준연도와 산정 기준이 명확합니다." },
-      { id: "tracking", title: "감축 실적 추적 방식이 정리되어 있습니다." },
-      { id: "review", title: "내부 리뷰/승인 루틴이 운영되고 있습니다." }
+      { id: "baseline", title: "복수 사업장(또는 법인)에 대한 대응이 필요합니다." },
+      { id: "tracking", title: "제출용 산정·보고 대응이 필요합니다." },
+      { id: "review", title: "내부 운영을 위한 배출량 산정 관리 체계(Excel)가 필요합니다." }
     ],
     steps: ["기준 정렬", "지표 설계", "운영 룰 수립", "정기 제출 대응"]
   },
   sbti: {
     summary: "감축 목표 수립과 승인 대응을 위한 준비 수준을 점검합니다.",
     checklist: [
-      { id: "scenario", title: "감축 시나리오가 복수안으로 준비되어 있습니다." },
-      { id: "boundary", title: "목표 대상 조직/배출경계가 합의되었습니다." },
-      { id: "governance", title: "승인 대응을 위한 의사결정 체계가 정리되어 있습니다." }
+      { id: "scenario", title: "연결기준 종속회사를 포함해 Scope 1·2 산정이 필요합니다." },
+      { id: "boundary", title: "Scope 3 산정이 필요합니다." },
+      { id: "governance", title: "SBTi 목표 제출 후 QnA 대응도 필요합니다." }
     ],
     steps: ["기준선 확정", "목표안 설계", "내부 검토", "승인 대응"]
   },
   cdp: {
     summary: "CDP 문항 대응 품질과 증빙 체계의 일관성을 확인합니다.",
     checklist: [
-      { id: "question-map", title: "문항별 담당자와 데이터 소스가 연결되어 있습니다." },
-      { id: "evidence", title: "핵심 문항 증빙 자료가 최신 상태입니다." },
-      { id: "consistency", title: "공시 문구와 내부 데이터 간 불일치가 관리됩니다." }
+      { id: "question-map", title: "내부에서 자체 대응해본 경험이 없습니다." },
+      { id: "evidence", title: "현재 등급 기준으로 상향 컨설팅이 필요합니다." },
+      { id: "consistency", title: "Climate 외 추가 모듈(Water 등) 대응이 필요합니다." }
     ],
     steps: ["문항 매핑", "증빙 보강", "내부 리뷰", "최종 제출"]
   },
   "lca-platform": {
     summary: "LCA SW 도입 시 초기 온보딩과 운영 정착 범위를 진단합니다.",
     checklist: [
-      { id: "workflow", title: "현재 업무 흐름이 플랫폼 구조로 정의되어 있습니다." },
-      { id: "migration", title: "기존 데이터 이관 우선순위가 정리되어 있습니다." },
-      { id: "training", title: "실무자 온보딩/교육 계획이 준비되어 있습니다." }
+      { id: "workflow", title: "내부에 LCA·PCF를 담당할 전문인력이 있습니다." },
+      { id: "migration", title: "Excel Tool 기반으로 LCA·PCF를 산정해본 경험이 있습니다." },
+      { id: "training", title: "복수 이상의 사업장·제품을 관리할 수 있는 SW가 필요합니다." }
     ],
     steps: ["요구사항 정의", "환경 세팅", "파일럿 운영", "정식 확산"]
   }
@@ -335,6 +343,14 @@ function getChecklistDefaultChecked(maturity: CurrentStateOption["id"] | "", ite
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function createClientSessionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `flow-c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function useCountUp(target: number, isActive: boolean, duration = 1600) {
@@ -486,6 +502,8 @@ export default function FlowCExperience() {
   const [showDetailDiagnosis, setShowDetailDiagnosis] = useState(false);
   const [expandedServiceId, setExpandedServiceId] = useState<ServiceOption["id"] | null>(null);
   const [detailChecklistState, setDetailChecklistState] = useState<Record<string, boolean>>({});
+  const [clientSessionId, setClientSessionId] = useState("");
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [requestEmail, setRequestEmail] = useState("");
   const [requestEmailTouched, setRequestEmailTouched] = useState(false);
   const [requestSubmitState, setRequestSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -496,6 +514,10 @@ export default function FlowCExperience() {
   const resultAnalyzeTimerRef = useRef<number | null>(null);
   const resultCompleteTimerRef = useRef<number | null>(null);
   const resultRevealFrameRef = useRef<number | null>(null);
+  const draftSaveTimerRef = useRef<number | null>(null);
+  const draftSaveInFlightRef = useRef(false);
+  const resultViewTrackedRef = useRef(false);
+  const detailViewTrackedRef = useRef(false);
   const sessionHydratedRef = useRef(false);
 
   const currentStep = STEPS[displayStepIndex];
@@ -541,7 +563,26 @@ export default function FlowCExperience() {
       if (resultRevealFrameRef.current !== null) {
         window.cancelAnimationFrame(resultRevealFrameRef.current);
       }
+      if (draftSaveTimerRef.current !== null) {
+        window.clearTimeout(draftSaveTimerRef.current);
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    const storedSessionId = window.localStorage.getItem(FLOW_C_CLIENT_SESSION_STORAGE_KEY);
+    if (storedSessionId) {
+      setClientSessionId(storedSessionId);
+    } else {
+      const nextSessionId = createClientSessionId();
+      window.localStorage.setItem(FLOW_C_CLIENT_SESSION_STORAGE_KEY, nextSessionId);
+      setClientSessionId(nextSessionId);
+    }
+
+    const storedDraftId = window.localStorage.getItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
+    if (storedDraftId) {
+      setDraftId(storedDraftId);
+    }
   }, []);
 
   useEffect(() => {
@@ -719,6 +760,22 @@ export default function FlowCExperience() {
   }, [resultFlowPhase]);
 
   useEffect(() => {
+    if (resultFlowPhase !== "result" || !estimate || resultViewTrackedRef.current) {
+      return;
+    }
+
+    trackEvent("flow_c_result_view", {
+      flow_id: "flow_c",
+      estimate_min: estimate.total.min,
+      estimate_max: estimate.total.max,
+      selected_services_count: selectedServices.length,
+      selected_goals_count: selectedGoals.length,
+      has_platform: selectedServices.includes("lca-platform")
+    });
+    resultViewTrackedRef.current = true;
+  }, [estimate, resultFlowPhase, selectedGoals.length, selectedServices]);
+
+  useEffect(() => {
     const shouldAnimate = isComplete && Boolean(estimate) && (resultFlowPhase === "result" || resultFlowPhase === "idle");
     setResultAnimated(shouldAnimate);
 
@@ -755,6 +812,109 @@ export default function FlowCExperience() {
     [selectedServices]
   );
   const isRequestEmailValid = isValidEmail(requestEmail.trim());
+
+  const serviceProgress = useMemo(
+    () =>
+      detailServices.map((service) => {
+        const checkedCount = service.checklist.filter((item) => detailChecklistState[`${service.id}:${item.id}`]).length;
+
+        return {
+          id: service.id,
+          title: service.title,
+          checkedCount,
+          totalCount: service.checklist.length
+        };
+      }),
+    [detailChecklistState, detailServices]
+  );
+
+  const persistDraft = async (latestStep: "result" | "detail") => {
+    if (!estimate || !selectedIndustry || !selectedScale || !selectedCurrent || !clientSessionId) {
+      return;
+    }
+
+    if (draftSaveInFlightRef.current) {
+      return;
+    }
+
+    draftSaveInFlightRef.current = true;
+
+    const payload: EstimateDraftPayload = {
+      draftId: draftId ?? undefined,
+      clientSessionId,
+      source: "flow-c",
+      latestStep,
+      selections: {
+        industryId: selectedIndustry,
+        scaleId: selectedScale,
+        currentStateId: selectedCurrent,
+        serviceIds: selectedServices,
+        goalIds: selectedGoals
+      },
+      estimate: {
+        min: estimate.total.min,
+        max: estimate.total.max,
+        recommendation: estimate.recommendation,
+        serviceBreakdown: estimate.serviceBreakdown
+      },
+      detailDiagnosis: {
+        checklistState: detailChecklistState,
+        serviceProgress
+      },
+      capturedAt: new Date().toISOString()
+    };
+
+    try {
+      const response = await fetch("/api/estimate-draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = (await response.json()) as EstimateDraftApiResponse;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.ok ? "중간 저장 오류" : result.error);
+      }
+
+      setDraftId(result.draftId);
+      window.localStorage.setItem(FLOW_C_DRAFT_ID_STORAGE_KEY, result.draftId);
+      trackEvent("flow_c_draft_saved", {
+        flow_id: "flow_c",
+        latest_step: latestStep,
+        has_draft_id: Boolean(draftId)
+      });
+    } catch (error) {
+      console.error("[flow-c] draft save failed", error);
+    } finally {
+      draftSaveInFlightRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (!isComplete || !estimate) {
+      return;
+    }
+
+    if (!showDetailDiagnosis) {
+      return;
+    }
+
+    if (draftSaveTimerRef.current !== null) {
+      window.clearTimeout(draftSaveTimerRef.current);
+    }
+
+    draftSaveTimerRef.current = window.setTimeout(() => {
+      void persistDraft("detail");
+    }, 450);
+
+    return () => {
+      if (draftSaveTimerRef.current !== null) {
+        window.clearTimeout(draftSaveTimerRef.current);
+      }
+    };
+  }, [detailChecklistState, draftId, estimate, isComplete, showDetailDiagnosis]);
 
   useEffect(() => {
     if (detailServices.length === 0) {
@@ -811,6 +971,8 @@ export default function FlowCExperience() {
       return;
     }
 
+    void persistDraft("result");
+
     if (stepExitTimerRef.current !== null) {
       window.clearTimeout(stepExitTimerRef.current);
     }
@@ -839,6 +1001,17 @@ export default function FlowCExperience() {
   const handleNext = () => {
     if (!isStepValid || isStepTransitioning) {
       return;
+    }
+
+    const currentStepId = STEPS[displayStepIndex]?.id;
+    if (currentStepId) {
+      trackEvent("flow_c_step_completed", {
+        flow_id: "flow_c",
+        step_id: currentStepId,
+        step_index: displayStepIndex + 1,
+        services_count: selectedServices.length,
+        goals_count: selectedGoals.length
+      });
     }
 
     if (displayStepIndex === STEPS.length - 1) {
@@ -883,11 +1056,15 @@ export default function FlowCExperience() {
     setShowDetailDiagnosis(false);
     setExpandedServiceId(null);
     setDetailChecklistState({});
+    setDraftId(null);
     setRequestEmail("");
     setRequestEmailTouched(false);
     setRequestSubmitState("idle");
     setRequestSubmitError("");
+    resultViewTrackedRef.current = false;
+    detailViewTrackedRef.current = false;
     window.sessionStorage.removeItem(FLOW_C_SESSION_STORAGE_KEY);
+    window.localStorage.removeItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
   };
 
   useEffect(() => {
@@ -961,19 +1138,16 @@ export default function FlowCExperience() {
       return;
     }
 
-    const normalizedEmail = requestEmail.trim().toLowerCase();
-    const serviceProgress = detailServices.map((service) => {
-      const checkedCount = service.checklist.filter((item) => detailChecklistState[`${service.id}:${item.id}`]).length;
-
-      return {
-        id: service.id,
-        title: service.title,
-        checkedCount,
-        totalCount: service.checklist.length
-      };
+    trackEvent("flow_c_email_submit_attempt", {
+      flow_id: "flow_c",
+      has_draft_id: Boolean(draftId),
+      selected_services_count: selectedServices.length
     });
 
+    const normalizedEmail = requestEmail.trim().toLowerCase();
+
     const payload: EstimateRequestPayload = {
+      draftId: draftId ?? undefined,
       email: normalizedEmail,
       source: "flow-c",
       selections: {
@@ -1015,10 +1189,22 @@ export default function FlowCExperience() {
 
       setRequestEmail(normalizedEmail);
       setRequestSubmitState("success");
+      trackEvent("flow_c_email_submit_success", {
+        flow_id: "flow_c",
+        has_draft_id: Boolean(draftId),
+        mail_status: result.mailStatus
+      });
+      setDraftId(null);
+      window.localStorage.removeItem(FLOW_C_DRAFT_ID_STORAGE_KEY);
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 전송 중 오류가 발생했습니다.";
       setRequestSubmitState("error");
       setRequestSubmitError(message);
+      trackEvent("flow_c_email_submit_fail", {
+        flow_id: "flow_c",
+        has_draft_id: Boolean(draftId),
+        error_code: "submit_failed"
+      });
     }
   };
 
@@ -1028,7 +1214,7 @@ export default function FlowCExperience() {
         <div className="mx-auto flex max-w-md flex-col gap-7">
           <div>
             <div className="rounded-[2rem] border border-white/60 bg-white/70 px-6 py-7 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur">
-              <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 규제 비용 진단</p>
+              <p className="text-sm font-semibold text-[#2d6df6]">제조업 탄소 대응 비용 진단</p>
               <h1
                 aria-label={HERO_HEADLINE_LINES.join(" ")}
                 className="mt-4 text-[2.06rem] font-[800] leading-[1.24] tracking-[-0.02em] text-slate-950 sm:text-[2.2rem]"
@@ -1082,7 +1268,12 @@ export default function FlowCExperience() {
           <div className="w-full pb-4">
             <button
               type="button"
-              onClick={() => setStarted(true)}
+              onClick={() => {
+                trackEvent("flow_c_start", { flow_id: "flow_c" });
+                resultViewTrackedRef.current = false;
+                detailViewTrackedRef.current = false;
+                setStarted(true);
+              }}
               className="w-full rounded-[1.25rem] bg-[linear-gradient(135deg,#2f6de9_0%,#1f5edc_45%,#1a4fbe_100%)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_40px_rgba(47,109,233,0.34)] transition-transform hover:-translate-y-0.5"
             >
               진단 시작하기
@@ -1110,7 +1301,7 @@ export default function FlowCExperience() {
 
           <div className="rounded-[2rem] border border-[#d9e6ff] bg-white px-6 pb-6 pt-7 shadow-[0_20px_55px_rgba(31,94,220,0.12)]">
             <div className="inline-flex items-center rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-semibold text-[#2f63dd]">
-              상세진단
+              상세 옵션
             </div>
             <h2 className="mt-4 text-[1.6rem] font-[800] leading-tight tracking-[-0.02em] text-slate-950">
               선택하신 항목의 진행 범위를
@@ -1118,7 +1309,7 @@ export default function FlowCExperience() {
               한눈에 점검해보세요
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              체크박스를 눌러 현재 준비 상태를 확인하고, 각 항목의 세부 업무 단계를 펼쳐서 범위를 빠르게 볼 수 있습니다.
+              체크박스를 눌러 현재 준비 상태를 확인하세요.
             </p>
           </div>
 
@@ -1168,30 +1359,6 @@ export default function FlowCExperience() {
                       );
                     })}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setExpandedServiceId((prev) => (prev === service.id ? null : service.id))}
-                    className="mt-4 w-full rounded-[1rem] border border-[#d9e6ff] bg-[#f5f8ff] px-4 py-2.5 text-sm font-semibold text-[#2f63dd]"
-                  >
-                    {isExpanded ? "세부 업무 단계 닫기" : "세부 업무 단계 보기"}
-                  </button>
-
-                  {isExpanded ? (
-                    <div className="mt-3 rounded-[1rem] bg-slate-50 px-4 py-3">
-                      <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">세부 업무 단계</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {service.steps.map((step, index) => (
-                          <span
-                            key={step}
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600"
-                          >
-                            {index + 1}. {step}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
                 </section>
               );
             })}
@@ -1272,6 +1439,10 @@ export default function FlowCExperience() {
 
   if (isComplete && estimate) {
     const shouldShowBreakdown = estimate.serviceBreakdown.length > 1;
+    const displayedServiceBreakdown = [
+      ...estimate.serviceBreakdown.filter((service) => service.id !== "lca-platform"),
+      ...estimate.serviceBreakdown.filter((service) => service.id === "lca-platform")
+    ];
 
     return (
       <main className={`min-h-screen bg-[#f8fafc] px-4 py-5 transition-opacity duration-500 ease-out sm:px-6 ${resultViewReady ? "opacity-100" : "opacity-0"}`}>
@@ -1280,10 +1451,10 @@ export default function FlowCExperience() {
             <p className="mt-8 text-sm font-semibold text-slate-500">예상 도입 금액 범위</p>
             <div className="mt-4 px-1">
               <p
-                className={`inline-flex items-end gap-2 whitespace-nowrap text-[clamp(1.18rem,6.9vw,1.95rem)] font-[800] leading-none tracking-[-0.04em] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
+                className={`inline-flex max-w-full items-end gap-1 whitespace-nowrap text-[clamp(0.86rem,4.6vw,1.95rem)] font-[800] leading-none tracking-[-0.05em] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
               >
                 <span>{formatAmount(animatedMin)}</span>
-                <span className="pb-[0.08rem] text-[0.95em] font-semibold text-slate-300">~</span>
+                <span className="pb-[0.08rem] text-[0.95em] font-semibold text-slate-950">~</span>
                 <span>{formatAmount(animatedMax)}</span>
               </p>
             </div>
@@ -1295,7 +1466,7 @@ export default function FlowCExperience() {
               <div className="rounded-[1.5rem] bg-slate-50 px-5 py-4">
                 <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                  {estimate.serviceBreakdown.map((service) => (
+                  {displayedServiceBreakdown.map((service) => (
                     <div key={service.id} className="flex items-center justify-between gap-3">
                       <span>{service.label}</span>
                       <span className="font-semibold text-slate-900">{formatRange(service.range)}</span>
@@ -1345,10 +1516,19 @@ export default function FlowCExperience() {
             <div className="mt-7 space-y-2">
               <button
                 type="button"
-                onClick={() => setShowDetailDiagnosis(true)}
+                onClick={() => {
+                  if (!detailViewTrackedRef.current) {
+                    trackEvent("flow_c_detail_view", {
+                      flow_id: "flow_c",
+                      selected_services_count: selectedServices.length
+                    });
+                    detailViewTrackedRef.current = true;
+                  }
+                  setShowDetailDiagnosis(true);
+                }}
                 className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
               >
-                상세진단 보기
+                상세옵션 선택
               </button>
               <button
                 type="button"

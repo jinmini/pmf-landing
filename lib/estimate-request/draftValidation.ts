@@ -1,4 +1,4 @@
-import type { EstimateRequestPayload } from "@/types/estimateRequest";
+import type { EstimateDraftPayload } from "@/types/estimateRequest";
 
 const INDUSTRY_IDS = [
   "mobility",
@@ -24,10 +24,6 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -36,8 +32,8 @@ function hasOnlyAllowedValues(values: string[], allowed: readonly string[]) {
   return values.every((item) => allowed.includes(item));
 }
 
-export function validateEstimateRequestPayload(payload: unknown):
-  | { ok: true; value: EstimateRequestPayload }
+export function validateEstimateDraftPayload(payload: unknown):
+  | { ok: true; value: EstimateDraftPayload }
   | { ok: false; error: string } {
   if (!isRecord(payload)) {
     return { ok: false, error: "요청 형식이 올바르지 않습니다." };
@@ -47,19 +43,24 @@ export function validateEstimateRequestPayload(payload: unknown):
     return { ok: false, error: "필수 입력값이 누락되었습니다." };
   }
 
-  const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
-  if (!isEmail(email)) {
-    return { ok: false, error: "유효한 이메일을 입력해 주세요." };
+  const source = payload.source;
+  if (source !== "flow-c") {
+    return { ok: false, error: "허용되지 않은 요청 소스입니다." };
+  }
+
+  const latestStep = payload.latestStep;
+  if (latestStep !== "result" && latestStep !== "detail") {
+    return { ok: false, error: "최신 단계 값이 올바르지 않습니다." };
+  }
+
+  const clientSessionId = typeof payload.clientSessionId === "string" ? payload.clientSessionId.trim() : "";
+  if (!clientSessionId || clientSessionId.length > 120) {
+    return { ok: false, error: "클라이언트 세션 값이 올바르지 않습니다." };
   }
 
   const draftId = typeof payload.draftId === "string" ? payload.draftId.trim() : undefined;
   if (draftId && !isUuid(draftId)) {
-    return { ok: false, error: "요청 식별값이 올바르지 않습니다." };
-  }
-
-  const source = payload.source;
-  if (source !== "flow-c") {
-    return { ok: false, error: "허용되지 않은 요청 소스입니다." };
+    return { ok: false, error: "드래프트 식별값이 올바르지 않습니다." };
   }
 
   const industryId = payload.selections.industryId;
@@ -116,7 +117,6 @@ export function validateEstimateRequestPayload(payload: unknown):
     if (!isRecord(item) || !isRecord(item.range)) {
       return { ok: false, error: "서비스 금액 상세값 형식이 올바르지 않습니다." };
     }
-
     if (typeof item.id !== "string" || !SERVICE_IDS.includes(item.id as (typeof SERVICE_IDS)[number])) {
       return { ok: false, error: "서비스 금액 상세값이 올바르지 않습니다." };
     }
@@ -170,17 +170,18 @@ export function validateEstimateRequestPayload(payload: unknown):
     }
   }
 
-  const submittedAt = payload.submittedAt;
-  if (typeof submittedAt !== "string" || Number.isNaN(Date.parse(submittedAt))) {
-    return { ok: false, error: "제출 시간이 올바르지 않습니다." };
+  const capturedAt = payload.capturedAt;
+  if (typeof capturedAt !== "string" || Number.isNaN(Date.parse(capturedAt))) {
+    return { ok: false, error: "캡처 시간이 올바르지 않습니다." };
   }
 
   return {
     ok: true,
     value: {
-      email,
       draftId,
+      clientSessionId,
       source,
+      latestStep,
       selections: {
         industryId,
         scaleId,
@@ -212,7 +213,7 @@ export function validateEstimateRequestPayload(payload: unknown):
           totalCount: Math.round(item.totalCount as number)
         }))
       },
-      submittedAt
+      capturedAt
     }
   };
 }

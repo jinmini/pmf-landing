@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateEstimateRequestPayload } from "@/lib/estimate-request/validation";
 import { insertEstimateRequest } from "@/lib/server/estimateRequestStore";
 import { sendEstimateRequestNotification } from "@/lib/server/estimateRequestEmail";
+import { markEstimateDraftSubmitted } from "@/lib/server/estimateDraftStore";
 import type { EstimateRequestApiResponse } from "@/types/estimateRequest";
 
 export const runtime = "nodejs";
@@ -37,6 +38,14 @@ export async function POST(request: Request) {
       ipAddress: getClientIp(request),
       userAgent: request.headers.get("user-agent")
     });
+
+    if (parsed.value.draftId) {
+      try {
+        await markEstimateDraftSubmitted(parsed.value.draftId, requestId);
+      } catch (error) {
+        console.error("[estimate-request] draft submit mark failed", error);
+      }
+    }
 
     let mailStatus: "sent" | "skipped" | "failed" = "skipped";
     try {

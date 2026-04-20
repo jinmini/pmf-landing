@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
+import { GA_MEASUREMENT_ID, isGaEnabled } from "@/lib/analytics/ga";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "LynC | 지속가능성 전략 방향성 탐색",
@@ -13,8 +19,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body>{children}</body>
+    <html lang="ko" className={cn("font-sans", geist.variable)}>
+      <body>
+        {isGaEnabled() ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}', { anonymize_ip: true });
+              `}
+            </Script>
+          </>
+        ) : null}
+        {children}
+      </body>
     </html>
   );
 }
