@@ -20,3 +20,6 @@ pnpm-debug.log*
 *.pem
 coverage
 
+# typescript incremental build cache
+*.tsbuildinfo
+

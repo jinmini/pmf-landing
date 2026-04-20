@@ -18,6 +18,7 @@ import {
   FLOW_C_SHORT_MESSAGES,
   FLOW_C_SERVICE_KEY_BY_ID
 } from "@/constants/flowCPricing";
+import { Button as StatefulButton } from "@/components/ui/stateful-button";
 
 type IndustryOption = {
   id: keyof typeof FLOW_C_INDUSTRY_KEY_BY_ID;
@@ -1124,8 +1125,7 @@ export default function FlowCExperience() {
     }));
   };
 
-  const handleSubmitRequestEmail = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitEstimateRequest = async () => {
     setRequestEmailTouched(true);
 
     if (!isRequestEmailValid || requestSubmitState === "submitting") {
@@ -1206,6 +1206,11 @@ export default function FlowCExperience() {
         error_code: "submit_failed"
       });
     }
+  };
+
+  const handleSubmitRequestEmail = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await submitEstimateRequest();
   };
 
   if (!started) {
@@ -1304,19 +1309,17 @@ export default function FlowCExperience() {
               상세 옵션
             </div>
             <h2 className="mt-4 text-[1.6rem] font-[800] leading-tight tracking-[-0.02em] text-slate-950">
-              선택하신 항목의 진행 범위를
+              선택하신 항목의 필요 범위를
               <br />
-              한눈에 점검해보세요
+              선택해 주세요
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              체크박스를 눌러 현재 준비 상태를 확인하세요.
+              체크박스를 눌러 현재 준비 상태를 알려주시면, 조금 더 자세한 예산 범위를 안내드립니다
             </p>
           </div>
 
           <div className="space-y-3">
             {detailServices.map((service) => {
-              const checkedCount = service.checklist.filter((item) => detailChecklistState[`${service.id}:${item.id}`]).length;
-              const progress = Math.round((checkedCount / service.checklist.length) * 100);
               const isExpanded = expandedServiceId === service.id;
 
               return (
@@ -1324,12 +1327,11 @@ export default function FlowCExperience() {
                   key={service.id}
                   className="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
                     <div>
                       <p className="text-[11px] font-semibold tracking-[0.16em] text-[#4e7aea]">{service.category}</p>
                       <h3 className="mt-1 text-base font-semibold text-slate-900">{service.title}</h3>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{progress}%</span>
                   </div>
 
                   <p className="mt-2 text-sm leading-6 text-slate-600">{service.summary}</p>
@@ -1369,7 +1371,7 @@ export default function FlowCExperience() {
               onSubmit={handleSubmitRequestEmail}
               className="rounded-[1.5rem] border border-[#d9e6ff] bg-white px-4 py-4 shadow-[0_12px_30px_rgba(47,99,221,0.1)]"
             >
-              <p className="text-sm font-semibold text-slate-900">정확한 견적 요청 받기</p>
+              <p className="text-sm font-semibold text-slate-900">조금 더 자세한 예산범위 요청하기</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">담당자 메일을 남겨주시면 상세 범위를 기준으로 안내할 수 있습니다.</p>
               <input
                 type="email"
@@ -1398,14 +1400,23 @@ export default function FlowCExperience() {
               {requestSubmitState === "error" ? (
                 <p className="mt-2 text-xs text-red-500">{requestSubmitError || "요청 전송 중 오류가 발생했습니다."}</p>
               ) : null}
-              <button
-                type="submit"
-                className="mt-3 w-full rounded-[0.95rem] bg-[#132750] px-3 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              <StatefulButton
+                type="button"
+                onClick={submitEstimateRequest}
                 disabled={!isRequestEmailValid || requestSubmitState === "submitting" || requestSubmitState === "success"}
+                className="mt-3 w-full justify-center rounded-[0.95rem] bg-[#132750] px-3 py-2.5 text-sm font-semibold text-white ring-[#132750] hover:ring-[#132750] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {requestSubmitState === "submitting" ? "등록 중..." : requestSubmitState === "success" ? "요청 접수 완료" : "상세 견적 요청 등록"}
-              </button>
+                {requestSubmitState === "success" ? "요청 접수 완료" : "요청하기"}
+              </StatefulButton>
             </form>
+
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="w-full rounded-[1.2rem] bg-[#132750] px-4 py-3 text-sm font-semibold text-white"
+            >
+              진단 종료하기
+            </button>
           </div>
         </div>
       </main>

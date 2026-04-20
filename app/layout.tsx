@@ -5,12 +5,12 @@ import { GA_MEASUREMENT_ID, isGaEnabled } from "@/lib/analytics/ga";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "LynC | 지속가능성 전략 방향성 탐색",
+  title: "CarbonHero | 탄소 대응 예산 진단",
   description:
-    "LynC의 PMF 및 고객 발견 단계에서 ESG/LCA 대응 니즈를 전략적으로 검증하기 위한 컨셉 랜딩 페이지입니다."
+    "제조기업 실무자가 탄소 대응의 예산 범위를 빠르게 가늠해볼 수 있도록 도와드립니다."
 };
 
 export default function RootLayout({
