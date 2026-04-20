@@ -316,18 +316,18 @@ function formatAmount(amount: number) {
   const remainder = amount % 10000;
 
   if (eok === 0) {
-    return `${amount.toLocaleString("ko-KR")}만 원`;
+    return `${amount.toLocaleString("ko-KR")}만원`;
   }
 
   if (remainder === 0) {
-    return `${eok}억 원`;
+    return `${eok}억원`;
   }
 
-  return `${eok}억 ${remainder.toLocaleString("ko-KR")}만 원`;
+  return `${eok}억 ${remainder.toLocaleString("ko-KR")}만원`;
 }
 
 function formatRange(range: PricingRange) {
-  return `${formatAmount(range.min)} ~ ${formatAmount(range.max)}`;
+  return `${formatAmount(range.min)}~${formatAmount(range.max)}`;
 }
 
 function getChecklistDefaultChecked(maturity: CurrentStateOption["id"] | "", itemIndex: number) {
@@ -1507,7 +1507,7 @@ export default function FlowCExperience() {
             <p className="mt-8 text-sm font-semibold text-slate-500">예상 도입 금액 범위</p>
             <div className="mt-4 px-1">
               <p
-                className={`fluid-amount inline-flex max-w-full flex-wrap items-end gap-1 font-[800] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out sm:flex-nowrap ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
+                className={`fluid-amount inline-flex max-w-full items-end gap-1 whitespace-nowrap font-[800] text-slate-950 tabular-nums transition-[filter,opacity,transform] duration-300 ease-out ${resultAnimated ? "translate-y-[2px] blur-[3px] opacity-70" : "translate-y-0 blur-0 opacity-100"}`}
               >
                 <span>{formatAmount(animatedMin)}</span>
                 <span className="pb-[0.08rem] text-[0.95em] font-semibold text-slate-950">~</span>
@@ -1523,21 +1523,21 @@ export default function FlowCExperience() {
                 <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">금액 구성</p>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
                   {displayedServiceBreakdown.map((service) => (
-                    <div key={service.id} className="flex items-center justify-between gap-3">
-                      <span>{service.label}</span>
-                      <span className="font-semibold text-slate-900">{formatRange(service.range)}</span>
+                    <div key={service.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+                      <span className="min-w-0 break-keep">{service.label}</span>
+                      <span className="whitespace-nowrap text-right font-semibold text-slate-900">{formatRange(service.range)}</span>
                     </div>
                   ))}
                   {estimate.breakdown.onboarding ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <span>LCA SW 온보딩 컨설팅</span>
-                      <span className="font-semibold text-slate-900">{formatRange(estimate.breakdown.onboarding)}</span>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+                      <span className="min-w-0 break-keep">LCA SW 온보딩 컨설팅</span>
+                      <span className="whitespace-nowrap text-right font-semibold text-slate-900">{formatRange(estimate.breakdown.onboarding)}</span>
                     </div>
                   ) : null}
                   <div className="mt-2 h-px bg-slate-200" />
-                  <div className="flex items-center justify-between gap-3">
-                    <span>합계 범위</span>
-                    <span className="font-semibold text-slate-900">{formatRange(estimate.total)}</span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+                    <span className="min-w-0 break-keep">합계 범위</span>
+                    <span className="whitespace-nowrap text-right font-semibold text-slate-900">{formatRange(estimate.total)}</span>
                   </div>
                 </div>
               </div>
