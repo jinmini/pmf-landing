@@ -1582,7 +1582,7 @@ export default function FlowCExperience() {
         <div className={`flex flex-1 flex-col transition-all duration-200 ease-out ${stepTransitionClass} ${isStepTransitioning ? "pointer-events-none" : ""}`}>
           <div className="flex flex-1 flex-col justify-center pb-8 pt-10">
             <p className="text-center text-sm font-semibold tracking-[0.18em] text-brand-700">{currentStep.kicker}</p>
-            <h1 className="fluid-title-step text-balance-pretty measure-tight mx-auto mt-4 text-center font-semibold text-slate-950">{currentStep.title}</h1>
+            <h1 className="fluid-title-step measure-step-title ko-heading-safe mx-auto mt-4 text-center font-semibold text-slate-950">{currentStep.title}</h1>
 
             {currentStep.id === "company" ? (
               <div ref={companyStepRef} className="mt-10 space-y-4">
