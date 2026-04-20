@@ -34,6 +34,7 @@ npm run start
 추가 설정 없이 기본 구성으로 배포 가능합니다.
 
 도메인 `carbonhero.kr` 기준 운영 배포 절차는 `docs/deployment-carbonhero.md`를 참고하세요.
+최종 배포 직전/직후 점검은 `docs/final-release-checklist.md`를 참고하세요.
 
 ## 주요 편집 포인트
 
