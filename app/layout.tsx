@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://carbonhero.kr";
 const siteName = "CarbonHero";
 const ogImageUrl = `${siteUrl.replace(/\/$/, "")}/og/carbonhero-og.png`;
+const siteTitle = "CarbonHero | 탄소 대응 예산 진단";
+const siteDescription = "제조기업 실무자가 탄소 대응의 예상 범위를 빠르게 가늠해볼 수 있도록 도와드립니다.";
 
 export const metadata: Metadata = {
-  title: "CarbonHero | ?꾩냼 ????덉궛 吏꾨떒",
-  description:
-    "?쒖“湲곗뾽 ?ㅻТ?먭? ?꾩냼 ??묒쓽 ?덉궛 踰붿쐞瑜?鍮좊Ⅴ寃?媛?좏빐蹂????덈룄濡??꾩??쒕┰?덈떎.",
+  title: siteTitle,
+  description: siteDescription,
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: "/"
@@ -21,14 +22,14 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "/",
     siteName,
-    title: "CarbonHero | ?꾩냼 ????덉궛 吏꾨떒",
-    description: "?쒖“湲곗뾽 ?ㅻТ?먭? ?꾩냼 ??묒쓽 ?덉궛 踰붿쐞瑜?鍮좊Ⅴ寃?媛?좏빐蹂????덈룄濡??꾩??쒕┰?덈떎.",
+    title: siteTitle,
+    description: siteDescription,
     images: [{ url: ogImageUrl, width: 1200, height: 630, alt: "CarbonHero" }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "CarbonHero | ?꾩냼 ????덉궛 吏꾨떒",
-    description: "?쒖“湲곗뾽 ?ㅻТ?먭? ?꾩냼 ??묒쓽 ?덉궛 踰붿쐞瑜?鍮좊Ⅴ寃?媛?좏빐蹂????덈룄濡??꾩??쒕┰?덈떎.",
+    title: siteTitle,
+    description: siteDescription,
     images: [ogImageUrl]
   },
   icons: {
