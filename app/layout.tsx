@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://carbonhero.kr";
 const siteName = "CarbonHero";
-const ogImageUrl = `${siteUrl.replace(/\/$/, "")}/og/carbonhero-og.png`;
+const ogImageUrl = `${siteUrl.replace(/\/$/, "")}/og/carbonhero-og-v2.png`;
 const siteTitle = "CarbonHero | 탄소 대응 예산 진단";
 const siteDescription = "제조기업 실무자가 탄소 대응의 예상 범위를 빠르게 가늠해볼 수 있도록 도와드립니다.";
 
