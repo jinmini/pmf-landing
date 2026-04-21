@@ -28,6 +28,15 @@ export const metadata: Metadata = {
     title: "CarbonHero | 탄소 대응 예산 진단",
     description: "제조기업 실무자가 탄소 대응의 예산 범위를 빠르게 가늠해볼 수 있도록 도와드립니다."
   },
+  icons: {
+    icon: [
+      { url: "/favicon/favicon.ico" },
+      { url: "/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" }
+    ],
+    apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180", type: "image/png" }]
+  },
+  manifest: "/favicon/site.webmanifest",
   robots: {
     index: true,
     follow: true

@@ -98,7 +98,10 @@ export const FLOW_C_LYNC_ONBOARDING_TABLE = {
 } as const;
 
 export const FLOW_C_SHORT_MESSAGES = {
-  base: "현재 선택 조건을 기준으로 산출한 예상 범위입니다.",
-  variance: "실제 도입금액 범위는 대상 제품, 데이터 구조, 운영 방식에 따라 달라질 수 있습니다.",
-  onboarding: "LCA SW 선택 시 온보딩 컨설팅 범위가 함께 검토됩니다."
+  intro: "본 예상 범위는 탄소중립연구원이 자체 집계한 국내외 도입 사례 및 시장 데이터를 기반으로 산출한 참고 수치입니다.",
+  bulletCase: "국내 공공·민간 기업의 실제 도입 사례 데이터 분석",
+  bulletSegment: "산업군·규모별 빅데이터 분석을 통한 구간 추정",
+  variance:
+    "시장 내 실제 도입 비용은 대상 제품, 데이터 구조, 운영 방식, 컨설팅 범위에 따라 유의미하게 달라질 수 있으며, 본 수치는 의사결정 참고용 시장 평균 범위입니다.",
+  onboarding: "LCA SW 선택 시 온보딩 컨설팅 범위가 함께 검토되며, 정확한 도입 규모는 전문가 상담을 통해 확인하실 수 있습니다."
 } as const;

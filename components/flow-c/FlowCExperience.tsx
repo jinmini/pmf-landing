@@ -744,7 +744,12 @@ export default function FlowCExperience() {
     const onboardingRange = hasPlatform ? buildFixedRange(FLOW_C_LYNC_ONBOARDING_TABLE[companyKey]) : null;
     const total = onboardingRange ? mergeRanges([solutionRange, onboardingRange]) : solutionRange;
 
-    const shortMessages: string[] = [FLOW_C_SHORT_MESSAGES.base, FLOW_C_SHORT_MESSAGES.variance];
+    const shortMessages: string[] = [
+      FLOW_C_SHORT_MESSAGES.intro,
+      FLOW_C_SHORT_MESSAGES.bulletCase,
+      FLOW_C_SHORT_MESSAGES.bulletSegment,
+      FLOW_C_SHORT_MESSAGES.variance
+    ];
     if (hasPlatform) {
       shortMessages.push(FLOW_C_SHORT_MESSAGES.onboarding);
     }
@@ -1499,6 +1504,12 @@ export default function FlowCExperience() {
       ...estimate.serviceBreakdown.filter((service) => service.id !== "lca-platform"),
       ...estimate.serviceBreakdown.filter((service) => service.id === "lca-platform")
     ];
+    const introMessage = estimate.shortMessages[0] ?? "";
+    const introHighlight = "자체 집계한 국내외 도입 사례 및 시장 데이터를 기반으로 산출한 참고 수치";
+    const introHighlightStart = introMessage.indexOf(introHighlight);
+    const hasIntroHighlight = introHighlightStart >= 0;
+    const introPrefix = hasIntroHighlight ? introMessage.slice(0, introHighlightStart) : introMessage;
+    const introSuffix = hasIntroHighlight ? introMessage.slice(introHighlightStart + introHighlight.length) : "";
 
     return (
       <main className={`min-h-screen bg-[#f8fafc] px-4 py-5 transition-opacity duration-500 ease-out sm:px-6 ${resultViewReady ? "opacity-100" : "opacity-0"}`}>
@@ -1543,11 +1554,28 @@ export default function FlowCExperience() {
               </div>
             ) : null}
 
-            <div className="mt-6 rounded-[1.4rem] border border-slate-200 px-4 py-4">
+            <div className="mt-6 rounded-[1.4rem] border border-slate-200 px-4 py-4 sm:px-5 sm:py-5">
               <p className="text-xs font-semibold tracking-[0.16em] text-slate-400">산정 기준</p>
-              <div className="mt-2 space-y-2">
-                {estimate.shortMessages.map((message) => (
-                  <p key={message} className="text-sm leading-7 text-slate-700">
+              <p className="mt-3 break-keep text-[0.95rem] leading-7 text-slate-700 sm:text-sm sm:leading-7">
+                {introPrefix}
+                {hasIntroHighlight ? <strong className="font-semibold text-slate-900">{introHighlight}</strong> : null}
+                {introSuffix}
+              </p>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 marker:text-slate-400">
+                {estimate.shortMessages.slice(1, 3).map((message) => (
+                  <li key={message} className="break-keep text-[0.95rem] leading-7 text-slate-700 sm:text-sm sm:leading-7">
+                    {message}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 space-y-2">
+                {estimate.shortMessages.slice(3).map((message) => (
+                  <p
+                    key={message}
+                    className={`break-keep text-[0.95rem] leading-7 text-slate-700 sm:text-sm sm:leading-7 ${
+                      message.startsWith("LCA SW 선택 시") ? "italic text-slate-800" : ""
+                    }`}
+                  >
                     {message}
                   </p>
                 ))}
